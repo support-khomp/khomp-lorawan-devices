@@ -1,0 +1,6 @@
+# This example contains just one end device: windsensor. It is referenced here in the index.
+
+endDevices:
+  # Unique identifier of the end device (lowercase, alphanumeric with dashes, max 36 characters)
+  - nit2xli # look in nit2xli.yaml for the end device definition
+  - itc200 # look in itc200.yaml for the end device definition
