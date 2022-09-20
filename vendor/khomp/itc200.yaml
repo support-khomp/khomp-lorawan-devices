@@ -45,7 +45,7 @@ resellerURLs:
   - name: 'Khomp Inc.'
     region:
       - Brazil
-    url: https:/http://khomp.com.br/
+    url: https://khomp.com.br/
 msrp:
   EUR: 90
   USD: 120
