@@ -510,17 +510,3 @@ function decodeUplink(input) {
   var data = decoded;
   return {data};
 }
-
-function encodeDownlink(input) {
-    return
-      errors: ['invalid LED color'],
-}
-
-function decodeDownlink(input) {
-  switch (input.fPort) {
-    default:
-      return {
-        errors: ['invalid FPort'],
-      };
-  }
-}
