@@ -58,7 +58,7 @@ function decodeUplink(input) {
         if (mask_sensor_int >> 0 & 0x01) {
             var battery = {};
             battery.n = 'battery';
-            battery.v = (input.bytes[index++] / 10.0).toFixed(1);
+            battery.v = (input.bytes[index++] / 10.0);
             battery.u = 'V';
             data.internal_sensors.push(battery);
         }
@@ -93,7 +93,7 @@ function decodeUplink(input) {
         if (mask_sensor_int >> 3 & 0x01) {
             var temperature = {};
             temperature.v = input.bytes[index++] | (input.bytes[index++] << 8);
-            temperature.v = ((temperature.v / 100.0) - 273.15).toFixed(2);
+            temperature.v = (temperature.v / 100.0) - 273.15;
             temperature.n = "temperature";
             temperature.u = "C";
             data.internal_sensors.push(temperature);
@@ -103,7 +103,7 @@ function decodeUplink(input) {
         if (mask_sensor_int >> 4 & 0x01) {
             var humidity = {};
             humidity.v = input.bytes[index++] | (input.bytes[index++] << 8);
-            humidity.v = (humidity.v / 10.0).toFixed(2);
+            humidity.v = humidity.v / 10.0;
             humidity.n = "humidity";
             humidity.u = "%";
             data.internal_sensors.push(humidity);
@@ -154,7 +154,7 @@ function decodeUplink(input) {
             for (var i = 0; i < nb_probes; i++) {
                 var probe = {};
                 var rom = {};
-                probe.v = (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273).toFixed(2);
+                probe.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273;
                 probe.u = 'C';
 
                 if (mask_sensor_ext >> 7 & 0x01) {
@@ -188,7 +188,7 @@ function decodeUplink(input) {
                                 var conn = {};
                                 conn.n = 'ems_e1_temp';
                                 conn.v = (input.bytes[index++] | (input.bytes[index++] << 8));
-                                conn.v = ((conn.v / 100.0) - 273.15).toFixed(2);
+                                conn.v = (conn.v / 100.0) - 273.15;
                                 conn.u = 'C';
                                 data.modules.push(conn);
                             }
@@ -197,7 +197,7 @@ function decodeUplink(input) {
                             if (mask_ems104 >> 1 & 0x01) {
                                 var conn = {};
                                 conn.n = 'ems_e2_kpa';
-                                conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).toFixed(2);
+                                conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;
                                 conn.u = 'kPa';
                                 data.modules.push(conn);
                             }
@@ -206,17 +206,17 @@ function decodeUplink(input) {
                             if (mask_ems104 >> 2 & 0x01) {
                                 var conn = {};
                                 conn.n = 'ems_e3_kpa';
-                                conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).toFixed(2);
+                                conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;
                                 conn.u = 'kPa';
                                 data.modules.push(conn);
                             }
 
                             // E4
                             if (mask_ems104 >> 3 & 0x01) {
-                                var e4_kpa = {};
-                                e4_kpa.n = 'ems_e4_kpa';
-                                e4_kpa.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).toFixed(2);
-                                e4_kpa.u = 'kPa';
+                                var conn = {};
+                                conn.n = 'ems_e4_kpa';
+                                conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;
+                                conn.u = 'kPa';
                                 data.modules.push(conn);
                             }
                         }
@@ -227,7 +227,6 @@ function decodeUplink(input) {
                             index++;
                             var mask_emc104 = input.bytes[index++];
 
-
                             // Plus (Min Max and Avg)
                             if (mask_emc104 >> 4 & 0x01) {
                                 for (var k = 0; k < 4; k++) {
@@ -237,15 +236,15 @@ function decodeUplink(input) {
                                         conn.u = "mA";
                                         // Min
                                         if (mask_emc104 >> 5 & 0x01) {
-                                            conn.min = (input.bytes[index++] / 12.0).toFixed(2);
+                                            conn.min = input.bytes[index++] / 12.0;
                                         }
                                         // Max
                                         if (mask_emc104 >> 6 & 0x01) {
-                                            conn.max = (input.bytes[index++] / 12.0).toFixed(2);
+                                            conn.max = input.bytes[index++] / 12.0;
                                         }
                                         // Avg
                                         if (mask_emc104 >> 7 & 0x01) {
-                                            conn.avg = (input.bytes[index++] / 12.0).toFixed(2);
+                                            conn.avg = input.bytes[index++] / 12.0;
                                         }
                                         data.modules.push(conn);
                                     }
@@ -255,7 +254,7 @@ function decodeUplink(input) {
                                 if (mask_emc104 >> 0 & 0x01) {
                                     var conn = {};
                                     conn.n = 'emc_e1_curr';
-                                    conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 1000).toFixed(2);
+                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
                                     conn.u = "mA";
                                     data.modules.push(conn);
                                 }
@@ -264,7 +263,7 @@ function decodeUplink(input) {
                                 if (mask_emc104 >> 1 & 0x01) {
                                     var conn = {};
                                     conn.n = 'emc_e2_curr';
-                                    conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 1000).toFixed(2);
+                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
                                     conn.u = "mA";
                                     data.modules.push(conn);
                                 }
@@ -273,7 +272,7 @@ function decodeUplink(input) {
                                 if (mask_emc104 >> 2 & 0x01) {
                                     var conn = {};
                                     conn.n = 'emc_e3_curr';
-                                    conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 1000).toFixed(2);
+                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
                                     conn.u = "mA";
                                     data.modules.push(conn);
                                 }
@@ -282,12 +281,11 @@ function decodeUplink(input) {
                                 if (mask_emc104 >> 3 & 0x01) {
                                     var conn = {};
                                     conn.n = 'emc_e4_curr';
-                                    conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 1000).toFixed(2);
+                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
                                     conn.u = "mA";
                                     data.modules.push(conn);
                                 }
                             }
-
                         }
                         break;
 
@@ -302,28 +300,28 @@ function decodeUplink(input) {
                                 //Rain
                                 var conn = {};
                                 conn.n = 'emw_rain_lvl';
-                                conn.v = (((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0).toFixed(1);
+                                conn.v = ((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0;
                                 conn.u = 'mm';
                                 data.modules.push(conn);
 
                                 //Average Wind Speed
                                 var conn = {};
                                 conn.n = 'emw_avg_wind_speed'
-                                conn.v = input.bytes[index++].toFixed(0);
+                                conn.v = input.bytes[index++];
                                 conn.u = 'km/h';
                                 data.modules.push(conn);
 
                                 //Gust Wind Speed
                                 var conn = {};
                                 conn.n = 'emw_gust_wind_speed';
-                                conn.v = input.bytes[index++].toFixed(0);
+                                conn.v = input.bytes[index++];
                                 conn.u = 'km/h';
                                 data.modules.push(conn);
 
                                 //Wind Direction
                                 var conn = {};
                                 conn.n = 'emw_wind_direction';
-                                conn.v = ((input.bytes[index++] << 8) | input.bytes[index++]).toFixed(0);
+                                conn.v = (input.bytes[index++] << 8) | input.bytes[index++];
                                 conn.u = 'graus';
                                 data.modules.push(conn);
 
@@ -331,14 +329,14 @@ function decodeUplink(input) {
                                 var conn = {};
                                 conn.n = 'emw_temperature';
                                 conn.v = ((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0;
-                                conn.v = (conn.v - 273.15).toFixed(1);
+                                conn.v = conn.v - 273.15;
                                 conn.u = 'C';
                                 data.modules.push(conn);
 
                                 //Humidity
                                 var conn = {};
                                 conn.n = 'emw_humidity';
-                                conn.v = input.bytes[index++].toFixed(0);
+                                conn.v = input.bytes[index++];
                                 conn.u = '%';
                                 data.modules.push(conn);
 
@@ -353,7 +351,7 @@ function decodeUplink(input) {
                                     var conn = {};
                                     conn.n = 'emw_uv';
                                     conn.v = input.bytes[index++];
-                                    conn.v = (conn.v / 10.0).toFixed(1);
+                                    conn.v = conn.v / 10.0;
                                     conn.u = '/';
                                     data.modules.push(conn);
                                 }
@@ -364,7 +362,7 @@ function decodeUplink(input) {
                                 var conn = {};
                                 conn.n = 'emw_solar_radiation';
                                 conn.v = (input.bytes[index++] << 8) | input.bytes[index++];
-                                conn.v = (conn.v / 10.0).toFixed(1);
+                                conn.v = conn.v / 10.0;
                                 conn.u = 'W/m²';
                                 data.modules.push(conn);
                             }
@@ -375,7 +373,7 @@ function decodeUplink(input) {
                                 conn.n = 'emw_atm_pres';
                                 conn.v = (input.bytes[index++] << 16);
                                 conn.v |= (input.bytes[index++] << 8) | input.bytes[index++] << 0;
-                                conn.v = (conn.v / 100.0).toFixed(1);
+                                conn.v = conn.v / 100.0;
                                 conn.u = 'hPa²';
                                 data.modules.push(conn);
                             }
@@ -499,8 +497,7 @@ function decodeUplink(input) {
                                 var sensor = {};
                                 sensor.n = prefix_name + '_' + 'temperature' + '_' + rom.v.toUpperCase();
                                 sensor.u = 'C';
-                                sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15;
-                                sensor.v = sensor.v.toFixed(2);
+                                sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15;                              
                                 data.modules.push(sensor);
                             }
 
@@ -509,8 +506,7 @@ function decodeUplink(input) {
                                 var sensor = {};
                                 sensor.n = prefix_name + '_' + 'humidity' + '_' + rom.v.toUpperCase();
                                 sensor.u = '%';
-                                sensor.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;
-                                sensor.v = sensor.v.toFixed(2);
+                                sensor.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;                               
                                 data.modules.push(sensor);
                             }
 
@@ -519,8 +515,7 @@ function decodeUplink(input) {
                                 var sensor = {};
                                 sensor.n = prefix_name + '_' + 'luminosity' + '_' + rom.v.toUpperCase();
                                 sensor.u = 'lux';
-                                sensor.v = input.bytes[index++] | (input.bytes[index++] << 8);
-                                sensor.v = sensor.v.toFixed(2);
+                                sensor.v = input.bytes[index++] | (input.bytes[index++] << 8);                           
                                 data.modules.push(sensor);
                             }
 
@@ -529,8 +524,7 @@ function decodeUplink(input) {
                                 var sensor = {};
                                 sensor.n = prefix_name + '_' + 'noise' + '_' + rom.v.toUpperCase();
                                 sensor.u = 'dB';
-                                sensor.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;
-                                sensor.v = sensor.v.toFixed(2);
+                                sensor.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0;                             
                                 data.modules.push(sensor);
                             }
 
@@ -543,7 +537,7 @@ function decodeUplink(input) {
                                 for (var j = 1; j < 4; j++) {
                                     sensor.v |= (input.bytes[index++] << (8 * j));
                                 }
-                                sensor.v = ((sensor.v / 100.0) - 273.15).toFixed(2);
+                                sensor.v = (sensor.v / 100.0) - 273.15;
                                 data.modules.push(sensor);
                             }
                         }
@@ -690,7 +684,7 @@ function decodeUplink(input) {
                 data.device.push(emc_avg);
 
                 var emc_cali = {};
-                var status_cali = ["tot_calibrated", "calibrated"];
+                var status_cali = ["not_calibrated", "calibrated"];
                 emc_cali.n = 'emc_avg';
                 emc_cali.v = status_cali[input.bytes[index++]];
                 data.device.push(emc_cali);
