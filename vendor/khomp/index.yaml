@@ -3,5 +3,7 @@
 endDevices:
   # Unique identifier of the end device (lowercase, alphanumeric with dashes, max 36 characters)
   - nit2xli # look in nit2xli.yaml for the end device definition
-  - itc200 # look in itc200.yaml for the end device definition
-  - itp200 # look in itp200.yaml for the end device definition
+  - itc100  # look in itc100.yaml for the end device definition
+  - ite11li # look in ite11li.yaml for the end device definition
+  - itc200  # look in itc200.yaml for the end device definition
+  - itp200  # look in itp200.yaml for the end device definition

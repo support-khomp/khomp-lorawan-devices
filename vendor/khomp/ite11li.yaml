@@ -1,0 +1,68 @@
+name: ITE 11LI
+description: ITE 11LI - Endpoint LoRa Medidor de Energia
+
+# Hardware versions (optional, use when you have revisions)
+hardwareVersions:
+  - version: '1'
+    numeric: 1
+
+# Firmware versions (at least one is mandatory)
+firmwareVersions:
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.0.2.2 (ABP)'
+    numeric: 1
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: ite11li-profile-abp
+        lorawanCertified: true
+        codec: ite11li-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.0.2.2 (OTAA)'
+    numeric: 1
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: ite11li-profile-otaa
+        lorawanCertified: true
+        codec: ite11li-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.0.3.0 (ABP)'
+    numeric: 2
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: ite11li-profile-abp
+        lorawanCertified: true
+        codec: ite11li-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.0.3.0 (OTAA)'
+    numeric: 2
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: ite11li-profile-otaa
+        lorawanCertified: true
+        codec: ite11li-codec
+# Commercial information
+resellerURLs:
+  - name: 'Khomp Inc.'
+    region:
+      - Brazil
+    url: https://khomp.com.br/
+msrp:
+  EUR: 90
+  USD: 120
+
+# Photos
+photos:
+  main: ite11li.jpg
+  other:
+    - ite11li-package.jpg
