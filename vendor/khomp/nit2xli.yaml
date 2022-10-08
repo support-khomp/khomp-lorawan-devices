@@ -9,61 +9,28 @@ hardwareVersions:
 # Firmware versions (at least one is mandatory)
 firmwareVersions:
   - # Firmware version
-    version: '3.0.3.0'
+    version: '3.0.3.0 (ABP)'
     numeric: 1
-    # Corresponding hardware versions (optional)
     hardwareVersions:
       - '3'
-
-    # LoRaWAN Device Profiles per region
-    # Supported regions are EU863-870, US902-928, AU915-928, AS923, CN779-787, EU433, CN470-510, KR920-923, IN865-867,
-    # RU864-870
     profiles:
       AU915-928:
-        # Optional identifier of the vendor of the profile. When you specify the vendorID, the profile is loaded from
-        # the vendorID's folder. This allows you to reuse profiles from module or LoRaWAN end device stack vendors.
-        # If vendorID is empty, the current vendor ID is used. In this example, the vendorID is the current vendor ID,
-        # which is verbose.
-        vendorID: khomp
-        # Identifier of the profile (lowercase, alphanumeric with dashes, max 36 characters)
         id: nit2xli-profile-abp
         lorawanCertified: true
         codec: nit2xli-codec
 
   - # Firmware version
-    version: '3.0.4.0'
-    numeric: 2
-    # Corresponding hardware versions (optional)
-    hardwareVersions:
-      - '3'
-
-    # LoRaWAN Device Profiles per region
-    # Supported regions are EU863-870, US902-928, AU915-928, AS923, CN779-787, EU433, CN470-510, KR920-923, IN865-867,
-    # RU864-870
-    profiles:
-      AU915-928:
-        # Optional identifier of the vendor of the profile. When you specify the vendorID, the profile is loaded from
-        # the vendorID's folder. This allows you to reuse profiles from module or LoRaWAN end device stack vendors.
-        # If vendorID is empty, the current vendor ID is used. In this example, the vendorID is the current vendor ID,
-        # which is verbose.
-        vendorID: khomp
-        # Identifier of the profile (lowercase, alphanumeric with dashes, max 36 characters)
-        id: nit2xli-profile-otaa
-        lorawanCertified: true
-        codec: nit2xli-codec
-
-  - # You can add more firmware versions and use different profiles per version
-    version: '3.0.3.0'
+    version: '3.0.3.0 (OTAA)'
     numeric: 1
     hardwareVersions:
       - '3'
     profiles:
       AU915-928:
-        id: nit2xli-profile-abp
+        id: nit2xli-profile-otaa
         lorawanCertified: true
         codec: nit2xli-codec
 
-  - # You can add more firmware versions and use different profiles per version
+  - # Firmware version
     version: '3.0.4.0'
     numeric: 2
     hardwareVersions:
