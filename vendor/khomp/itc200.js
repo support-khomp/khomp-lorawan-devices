@@ -8,73 +8,60 @@
 // Output must be an object with the following fields:
 // - data = Object representing the decoded payload.
 function decodeUplink(input) {
-	var i = 0;
-    var mask = 0;
-    var mask_index = 0;
-    var decoded = {};
-  	var bytes = input.bytes;
-    var decode_ver = bytes[i++];
-  	var port = input.fPort;
-    decoded.device = [];
-    decoded.sensors = [];
+    let i = 0;
+    let mask = 0;
+    let mask_index = 0;
+    let data = {};
+    let decode_ver = input.bytes[i++];
 
+    data.device = [];
+    data.sensors = [];
 
-    var model = {};
-    model.n = 'model';
-    model.u = 'string';
-    switch (port) {
+    let model = { n: 'model', u: 'string' };
+    switch (input.fPort) {
         case 16: model.v = "ITC 201"; break;
         case 17: model.v = "ITC 204"; break;
         case 18: model.v = "ITC 211"; break;
         case 19: model.v = "ITC 214"; break;
-        default: model.v = "Unknow Model"; return decoded;
+        default: model.v = "Unknown model"; return { data };
     }
 
-    decoded.device.push(model);
-
-    mask = (bytes[i++] << 8) | bytes[i++];
+    data.device.push(model);
+    mask = (input.bytes[i++] << 8) | input.bytes[i++];
 
     // Firmware
     if (mask >> mask_index++ & 0x01) {
-        var firmware = {};
-        firmware.n = "firmware_version";
-        firmware.v = (bytes[i] >> 4 & 0x0F) + '.' + (bytes[i++] & 0x0F) + '.';
-        firmware.v += (bytes[i] >> 4 & 0x0F) + '.' + (bytes[i++] & 0x0F);
-        firmware.u = 'string';
-        decoded.device.push(firmware);
+        let firmware = { n: 'firmware_version', u: 'string' };
+        firmware.v = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
+        firmware.v += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
+        data.device.push(firmware);
     }
 
     // battery
     if (mask >> mask_index++ & 0x01) {
-        var battery = {};
-        battery.n = 'battery';
-        battery.v = ((bytes[i++] / 100.0) + 1).toFixed(2);
-        battery.u = 'V';
-        decoded.sensors.push(battery);
+        let battery = { n: 'battery', u: 'V' };
+        battery.v = ((input.bytes[i++] / 100.0) + 1).round(2);
+        data.sensors.push(battery);
     }
 
     // Temperature
     if (mask >> mask_index++ & 0x01) {
-        var temperature = {};
-        temperature.n = 'temperature';
-        temperature.v = (bytes[i++] / 2.0).toFixed(1);
-        temperature.u = 'C';
-        decoded.sensors.push(temperature);
+        let temperature = { n: 'temperature', u: 'C' };
+        temperature.v = (input.bytes[i++] / 2.0).round(1);
+        data.sensors.push(temperature);
     }
 
     // Humidity
     if (mask >> mask_index++ & 0x01) {
-        var humidity = {};
-        humidity.n = 'humidity';
-        humidity.v = (bytes[i++] / 2.0).toFixed(1);
-        humidity.u = '%';
-        decoded.sensors.push(humidity);
+        let humidity = { n: 'humidity', u: '%' };
+        humidity.v = (input.bytes[i++] / 2.0).round(1);
+        data.sensors.push(humidity);
     }
 
     // operation_mode
     if (mask >> mask_index++ & 0x01) {
-        var operation_mode = {};
-        var str_op_mode = ["Single flux",
+        let operation_mode = { n: 'operation_mode', u: 'string' };
+        const str_op_mode = ["Single flux",
             "Single flux and reflux",
             "Single flux and reflux digital",
             "Single flux and reflux quadrature",
@@ -84,124 +71,78 @@ function decodeUplink(input) {
             "Dual flux and reflux quadrature",
             "Triple flux",
             "Quad flux"];
-        operation_mode.n = 'operation_mode';
-        operation_mode.v = str_op_mode[bytes[i++]];
-        operation_mode.u = 'string';
-        decoded.sensors.push(operation_mode);
+        operation_mode.v = str_op_mode[input.bytes[i++]];
+        data.sensors.push(operation_mode);
     }
 
-    if (decode_ver == 2) {
+    if (decode_ver > 1) {
         // resolution
         if (mask >> mask_index++ & 0x01) {
-            var resolution = {};
-            var str_resolution = ["1", "10",
+            let resolution = { n: 'resolution', u: 'L/pulse' };
+            const str_resolution = ["1", "10",
                 "100", "1000", "10000"];
-            resolution.n = 'resolution';
-            resolution.v = str_resolution[bytes[i++]];
-            resolution.u = 'L/pulse';
-            decoded.sensors.push(resolution);
+            resolution.v = str_resolution[input.bytes[i++]];
+            data.sensors.push(resolution);
         }
     }
 
     // fraud_bit
-    var fraud = {};
-    fraud.n = 'fraud';
-    fraud.u = 'string';
+    let fraud = { n: 'fraud', u: 'string' };
     if (mask >> mask_index++ & 0x01) {
-
         fraud.v = 'detected';
     }
     else {
         fraud.v = 'not detected';
     }
 
-    decoded.sensors.push(fraud);
+    data.sensors.push(fraud);
 
-    // Counter Flux A
-    if (mask >> mask_index++ & 0x01) {
-        var counter_flux_a = {};
-        counter_flux_a.n = 'counter_flux_a';
-        counter_flux_a.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        counter_flux_a.u = 'counter';
-        decoded.sensors.push(counter_flux_a);
+    // Counters
+    const counter_name = ["flux_a", "flux_b", "flux_c", "flux_d", "reflux_a", "reflux_b"];
+    for (var index = 0; index < 6; index++) {
+        if (mask >> mask_index++ & 0x01) {
+            let counter = { u: 'counter' };
+            counter.n = 'counter_' + counter_name[index];
+            counter.v = ((input.bytes[i++] << 24) | (input.bytes[i++] << 16) | (input.bytes[i++] << 8) | input.bytes[i++]);
+            data.sensors.push(counter);
+        }
     }
 
-    // Counter Flux B
+    // Pulse width
     if (mask >> mask_index++ & 0x01) {
-        var counter_flux_b = {};
-        counter_flux_b.n = 'counter_flux_b';
-        counter_flux_b.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        counter_flux_b.u = 'counter';
-        decoded.sensors.push(counter_flux_b);
-    }
-
-    // Counter Flux C
-    if (mask >> mask_index++ & 0x01) {
-        var counter_flux_c = {};
-        counter_flux_c.n = 'counter_flux_c';
-        counter_flux_c.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        counter_flux_c.u = 'counter';
-        decoded.sensors.push(counter_flux_c);
-    }
-
-    // Counter Flux D
-    if (mask >> mask_index++ & 0x01) {
-        var counter_flux_d = {};
-        counter_flux_d.n = 'counter_flux_d';
-        counter_flux_d.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        counter_flux_d.u = 'counter';
-        decoded.sensors.push(counter_flux_d);
-    }
-
-    // Counter Reflux A
-    if (mask >> mask_index++ & 0x01) {
-        var counter_reflux_a = {};
-        counter_reflux_a.n = 'counter_reflux_a';
-        counter_reflux_a.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        counter_reflux_a.u = 'counter';
-        decoded.sensors.push(counter_reflux_a);
-    }
-
-    // Counter Reflux B
-    if (mask >> mask_index++ & 0x01) {
-        var counter_reflux_b = {};
-        counter_reflux_b.n = 'counter_reflux_b';
-        counter_reflux_b.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        counter_reflux_b.u = 'counter';
-        decoded.sensors.push(counter_reflux_b);
+        let flux_in_use = (mask >> 7) & 0x0F;
+        let flux_in_use_index = 0;
+        const pulse_width_name = ["a", "b", "c", "d"];
+        for (var index = 0; index < 4; index++) {
+            if (flux_in_use >> flux_in_use_index++ & 0x01) {
+                let pulse_width_flux = { u: 'ms/10' };
+                pulse_width_flux.n = 'pulse_width_flux_' + pulse_width_name[flux_in_use_index - 1];
+                pulse_width_flux.v = (input.bytes[i++] << 8) | input.bytes[i++];
+                data.sensors.push(pulse_width_flux);
+            }
+        }
     }
 
     // timestamp_sync
-    var timestamp_sync = {};
-    timestamp_sync.n = 'timestamp_sync';
-    timestamp_sync.u = 'string';
+    let timestamp_sync = { n: 'timestamp_sync', u: 'string' };
     if (mask >> mask_index++ & 0x01) {
-
         timestamp_sync.v = 'syncronized';
     }
     else {
         timestamp_sync.v = 'not syncronized';
     }
-
-    decoded.sensors.push(timestamp_sync);
-
-    // Timestamp
-    if (mask >> mask_index++ & 0x01) {
-        var timestamp = {};
-        timestamp.n = 'timestamp';
-        timestamp.v = ((bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | bytes[i++]);
-        timestamp.u = 'seconds';
-        decoded.sensors.push(timestamp);
-    }
+    data.sensors.push(timestamp_sync);
 
     // Counter insert alarm    
     if (mask >> mask_index++ & 0x01) {
-        var counter_insert = {};
-        counter_insert.n = 'counter_insert';
-        counter_insert.u = 'string';
-        counter_insert.v = 'alarm';
-        decoded.sensors.push(counter_insert);
-    } 
-	data = decoded;
-    return {data};
+        const counter_insert = { n: 'counter_insert', u: 'string', v: 'alarm' };
+        data.sensors.push(counter_insert);
+    }
+
+    return { data };
+}
+
+Number.prototype.round = function (n) {
+    const d = Math.pow(10, n);
+    return Math.round((this + Number.EPSILON) * d) / d;
 }
