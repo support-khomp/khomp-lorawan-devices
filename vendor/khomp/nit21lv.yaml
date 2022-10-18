@@ -1,0 +1,57 @@
+name: NIT 21LV
+description: NIT 21LV - Endpoint LoRa Vibração de Maquinas
+
+# Hardware versions (optional, use when you have revisions)
+hardwareVersions:
+  - version: '1'
+    numeric: 1
+
+# Firmware versions (at least one is mandatory)
+firmwareVersions:
+  - # Firmware version
+    version: '1.0.0.0'
+    numeric: 1
+    # Corresponding hardware versions (optional)
+    hardwareVersions:
+      - '1'
+
+    # LoRaWAN Device Profiles per region
+    # Supported regions are EU863-870, US902-928, AU915-928, AS923, CN779-787, EU433, CN470-510, KR920-923, IN865-867,
+    # RU864-870
+    profiles:
+      AU915-928:
+        # Optional identifier of the vendor of the profile. When you specify the vendorID, the profile is loaded from
+        # the vendorID's folder. This allows you to reuse profiles from module or LoRaWAN end device stack vendors.
+        # If vendorID is empty, the current vendor ID is used. In this example, the vendorID is the current vendor ID,
+        # which is verbose.
+        vendorID: khomp
+        # Identifier of the profile (lowercase, alphanumeric with dashes, max 36 characters)
+        id: nit21lv-profile
+        lorawanCertified: true
+        codec: nit21lv-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.0.0.0'
+    numeric: 1
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: nit21lv-profile
+        lorawanCertified: true
+        codec: nit21lv-codec
+# Commercial information
+resellerURLs:
+  - name: 'Khomp Inc.'
+    region:
+      - Brazil
+    url: https://khomp.com.br/
+msrp:
+  EUR: 90
+  USD: 120
+
+# Photos
+photos:
+  main: nit21lv.png
+  other:
+    - nit21lv-package.png

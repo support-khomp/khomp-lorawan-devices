@@ -8,3 +8,4 @@ endDevices:
   - itc200  # look in itc200.yaml for the end device definition
   - itp200  # look in itp200.yaml for the end device definition
   - nit10la # look in nit20la.yaml for the end device definition
+  - nit21lv # look in nit21lv.yaml for the end device definition
