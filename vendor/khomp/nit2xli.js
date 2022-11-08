@@ -26,9 +26,7 @@ function decodeUplink(input) {
         const status_relay = ["NO", "NC"];
 
         // Decode Model
-        let model = {};
-        model.n = 'model';
-        model.u = 'string';
+        let model = { n: 'model' };
         switch (input.fPort) {
             case 3: model.v = "NIT20L"; break;
             case 4: model.v = "NIT21L"; break;
@@ -47,10 +45,7 @@ function decodeUplink(input) {
 
         // Environment Sensor
         if (mask_sensor_inte >> 0 & 0x01) {
-            let env_sensor_status = {};
-            env_sensor_status.n = 'env_sensor_status';
-            env_sensor_status.u = 'string';
-            env_sensor_status.v = 'fail';
+            let env_sensor_status = { n: 'env_sensor_status', v: 'fail' };
             data.device.push(env_sensor_status);
         }
 
@@ -68,9 +63,7 @@ function decodeUplink(input) {
 
         // Decode Firmware Version
         if (mask_sensor_int >> 2 & 0x01) {
-            let firmware = {};
-            firmware.n = "firmware_version";
-            firmware.u = 'string';
+            let firmware = { n: 'firmware_version' };
             firmware.v = input.bytes[index++] | (input.bytes[index++] << 8) | (input.bytes[index++] << 16);
             let hardware = (firmware.v / 1000000) >>> 0;
             let compatibility = ((firmware.v / 10000) - (hardware * 100)) >>> 0;
@@ -81,51 +74,40 @@ function decodeUplink(input) {
         }
 
         // Decode External Power or Battery
-        let power = {};
-        power.n = 'power';
-        power.u = 'string';
+        let power = { n: 'power', v: 'battery' };
         if (mask_sensor_int >> 5 & 0x01) {
             power.v = "external";
-        }
-        else {
-            power.v = "battery";
         }
         data.device.push(power);
 
         // Decode Temperature Int
         if (mask_sensor_int >> 3 & 0x01) {
-            let temperature = {};
+            let temperature = { n: 'temperature', u: 'C' };
             temperature.v = input.bytes[index++] | (input.bytes[index++] << 8);
             temperature.v = ((temperature.v / 100.0) - 273.15).round(2);
-            temperature.n = "temperature";
-            temperature.u = "C";
             data.internal_sensors.push(temperature);
         }
 
         // Decode Moisture Int
         if (mask_sensor_int >> 4 & 0x01) {
-            let humidity = {};
+            let humidity = { n: 'humidity', u: '%' };
             humidity.v = input.bytes[index++] | (input.bytes[index++] << 8);
             humidity.v = (humidity.v / 10.0).round(2);
-            humidity.n = "humidity";
-            humidity.u = "%";
             data.internal_sensors.push(humidity);
         }
 
         // Decode Drys
         if (mask_sensor_ext & 0x0F) {
             // Decode Dry 1 State
+            let dry = { u: 'boolean' };
             if (mask_sensor_ext >> 0 & 0x01) {
-                let dry = {};
                 dry.n = 'c1_state';
                 dry.v = status_dry[input.bytes[index++]];
-                dry.u = 'boolean';
                 data.drys.push(dry);
             }
 
             // Decode Dry 1 Count
             if (mask_sensor_ext >> 1 & 0x01) {
-                let dry = {};
                 dry.n = 'c1_count';
                 dry.v = input.bytes[index++] | (input.bytes[index++] << 8);
                 dry.u = 'counter';
@@ -134,7 +116,6 @@ function decodeUplink(input) {
 
             // Decode Dry 2 State
             if (mask_sensor_ext >> 2 & 0x01) {
-                let dry = {};
                 dry.n = 'c2_state';
                 dry.v = status_dry[input.bytes[index++]];
                 dry.u = 'boolean';
@@ -143,7 +124,6 @@ function decodeUplink(input) {
 
             // Decode Dry 2 Count
             if (mask_sensor_ext >> 3 & 0x01) {
-                let dry = {};
                 dry.n = 'c2_count';
                 dry.v = input.bytes[index++] | (input.bytes[index++] << 8);
                 dry.u = 'counter';
@@ -155,15 +135,13 @@ function decodeUplink(input) {
         if (mask_sensor_ext >> 4 & 0x07) {
             let nb_probes = (mask_sensor_ext >> 4 & 0x07) >>> 0;
             for (let i = 0; i < nb_probes; i++) {
-                let probe = {};
+                let probe = { u: 'C' };
                 let rom = {};
-                probe.v = (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15).round(2);
-                probe.u = 'C';
 
+                probe.v = (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15).round(2);
                 if (mask_sensor_ext >> 7 & 0x01) {
                     index += 7;
                     rom = (input.bytes[index--]).toString(16);
-
                     for (let j = 0; j < 7; j++) {
                         rom += (input.bytes[index--]).toString(16);
                     }
@@ -171,7 +149,7 @@ function decodeUplink(input) {
                 } else {
                     rom = input.bytes[index++];
                 }
-                probe.n = 'temperature' + '_' + rom.toUpperCase();
+                probe.n = 'temperature' + '_' + rom;
                 data.probes.push(probe);
             }
         }
@@ -187,39 +165,20 @@ function decodeUplink(input) {
 
                             // E1
                             if (mask_ems104 >> 0 & 0x01) {
-                                let conn = {};
-                                conn.n = 'ems_e1_temp';
-                                conn.v = (input.bytes[index++] | (input.bytes[index++] << 8));
-                                conn.v = ((conn.v / 100.0) - 273.15).round(2);
-                                conn.u = 'C';
-                                data.modules.push(conn);
+                                let ems = { n: 'ems_e1_temp', u: 'C' };
+                                ems.v = (input.bytes[index++] | (input.bytes[index++] << 8));
+                                ems.v = ((ems.v / 100.0) - 273.15).round(2);
+                                data.modules.push(ems);
                             }
 
-                            // E2
-                            if (mask_ems104 >> 1 & 0x01) {
-                                let conn = {};
-                                conn.n = 'ems_e2_kpa';
-                                conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
-                                conn.u = 'kPa';
-                                data.modules.push(conn);
-                            }
-
-                            // E3
-                            if (mask_ems104 >> 2 & 0x01) {
-                                let conn = {};
-                                conn.n = 'ems_e3_kpa';
-                                conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
-                                conn.u = 'kPa';
-                                data.modules.push(conn);
-                            }
-
-                            // E4
-                            if (mask_ems104 >> 3 & 0x01) {
-                                let conn = {};
-                                conn.n = 'ems_e4_kpa';
-                                conn.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
-                                conn.u = 'kPa';
-                                data.modules.push(conn);
+                            // KPA
+                            const kpa_name = ['e2_kpa', 'e3_kpa', 'e4_kpa'];
+                            for (let index = 0; index < 3; index++) {
+                                if (mask_ems104 >> (index + 1) & 0x01) {
+                                    let ems = { u: 'kPa', n: 'ems_' + kpa_name[index] };
+                                    ems.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
+                                    data.modules.push(ems);
+                                }
                             }
                         }
                         break;
@@ -300,83 +259,63 @@ function decodeUplink(input) {
                             //Weather Station
                             if (mask_emw104 >> 0 & 0x01) {
                                 //Rain
-                                let emw_rain_lvl = {};
-                                emw_rain_lvl.n = 'emw_rain_lvl';
+                                let emw_rain_lvl = { n: 'emw_rain_lvl', u: 'mm' };
                                 emw_rain_lvl.v = (((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0).round(1);
-                                emw_rain_lvl.u = 'mm';
                                 data.modules.push(emw_rain_lvl);
 
                                 //Average Wind Speed
-                                let emw_avg_wind_speed = {};
-                                emw_avg_wind_speed.n = 'emw_avg_wind_speed'
+                                let emw_avg_wind_speed = { n: 'emw_avg_wind_speed', u: 'km/h' };
                                 emw_avg_wind_speed.v = input.bytes[index++];
-                                emw_avg_wind_speed.u = 'km/h';
                                 data.modules.push(emw_avg_wind_speed);
 
                                 //Gust Wind Speed
-                                let emw_gust_wind_speed = {};
-                                emw_gust_wind_speed.n = 'emw_gust_wind_speed';
+                                let emw_gust_wind_speed = { n: 'emw_gust_wind_speed', u: 'km/h' };
                                 emw_gust_wind_speed.v = input.bytes[index++];
-                                emw_gust_wind_speed.u = 'km/h';
                                 data.modules.push(emw_gust_wind_speed);
 
                                 //Wind Direction
-                                let emw_wind_direction = {};
-                                emw_wind_direction.n = 'emw_wind_direction';
+                                let emw_wind_direction = { n: 'emw_wind_direction', u: 'graus' };
                                 emw_wind_direction.v = (input.bytes[index++] << 8) | input.bytes[index++];
-                                emw_wind_direction.u = 'graus';
                                 data.modules.push(emw_wind_direction);
 
                                 //Temperature
-                                let emw_temperature = {};
-                                emw_temperature.n = 'emw_temperature';
+                                let emw_temperature = { n: 'emw_temperature', u: 'C' };
                                 emw_temperature.v = ((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0;
-                                emw_temperature.v = (conn.v - 273.15).round(2);
-                                emw_temperature.u = 'C';
+                                emw_temperature.v = (emw_temperature.v - 273.15).round(2);
                                 data.modules.push(emw_temperature);
 
                                 //Humidity
-                                let emw_humidity = {};
-                                emw_humidity.n = 'emw_humidity';
+                                let emw_humidity = { n: 'emw_humidity', u: '%' };
                                 emw_humidity.v = input.bytes[index++];
-                                emw_humidity.u = '%';
                                 data.modules.push(emw_humidity);
 
                                 //Lux and UV
                                 if (mask_emw104 >> 1 & 0x01) {
-                                    let emw_luminosity = {};
-                                    emw_luminosity.n = 'emw_luminosity';
+                                    let emw_luminosity = { n: 'emw_luminosity', u: 'lx'; };
                                     emw_luminosity.v = (input.bytes[index++] << 16) | (input.bytes[index++] << 8) | input.bytes[index++];
-                                    emw_luminosity.u = 'lx';
                                     data.modules.push(emw_luminosity);
 
-                                    let emw_uv = {};
-                                    emw_uv.n = 'emw_uv';
+                                    let emw_uv = { n: 'emw_uv', u: '/' };
                                     emw_uv.v = input.bytes[index++];
                                     emw_uv.v = (emw_uv.v / 10.0).round(1);
-                                    emw_uv.u = '/';
                                     data.modules.push(emw_uv);
                                 }
                             }
 
                             //Pyranometer
                             if (mask_emw104 >> 2 & 0x01) {
-                                let conn = {};
-                                conn.n = 'emw_solar_radiation';
+                                let conn = { n: 'emw_solar_radiation', u: 'W/m²' };
                                 conn.v = (input.bytes[index++] << 8) | input.bytes[index++];
                                 conn.v = (conn.v / 10.0).round(1);
-                                conn.u = 'W/m²';
                                 data.modules.push(conn);
                             }
 
                             //Barometer
                             if (mask_emw104 >> 3 & 0x01) {
-                                let conn = {};
-                                conn.n = 'emw_atm_pres';
+                                let conn = { n: 'emw_atm_pres', u: 'hPa²' };
                                 conn.v = (input.bytes[index++] << 16);
                                 conn.v |= (input.bytes[index++] << 8) | input.bytes[index++] << 0;
                                 conn.v = (conn.v / 100.0).round(2);
-                                conn.u = 'hPa²';
                                 data.modules.push(conn);
                             }
                         }
@@ -442,9 +381,9 @@ function decodeUplink(input) {
                             index++;
                             let rom = {};
                             let prefix_name = {};
-                            let em_thw_acw = {};
                             let one_wire_ext_model = 0x00;
                             let mask_em_acw_thw = input.bytes[index++];
+                            const em_thw_acw_name = ['em_thw_200', 'em_acw_100', 'em_thw_201', 'unknown', 'unknown', 'em_thw_100'];
 
                             if (mask_em_acw_thw == 0x03) {
                                 one_wire_ext_model = 0x06;
@@ -459,27 +398,7 @@ function decodeUplink(input) {
                                 }
                             }
 
-                            switch (one_wire_ext_model) {
-                                case 0x01:
-                                    em_thw_acw.n = 'em_thw_200';
-                                    prefix_name = 'thw';
-                                    break;
-                                case 0x02:
-                                    em_thw_acw.n = 'em_acw_100';
-                                    prefix_name = 'acw';
-                                    break;
-                                case 0x03:
-                                    em_thw_acw.n = 'em_thw_201';
-                                    prefix_name = 'thw';
-                                    break;
-                                case 0x06:
-                                    em_thw_acw.n = 'em_thw_100';
-                                    prefix_name = 'thw';
-                                    break;
-                                default:
-                                    em_thw_acw.n = 'unknown';
-                                    break;
-                            }
+                            prefix_name = em_thw_acw_name[one_wire_ext_model + 1]
 
                             //ROM
                             if ((mask_sensor_ext >> 4 & 0x07) && (mask_sensor_ext >> 7 & 0x00)) {
@@ -496,45 +415,35 @@ function decodeUplink(input) {
 
                             //Temperature
                             if (mask_em_acw_thw >> 0 & 0x01) {
-                                let sensor = {};
-                                sensor.n = prefix_name + '_' + 'temperature' + '_' + rom.toUpperCase();
-                                sensor.u = 'C';
+                                let sensor = { n: prefix_name + '_' + 'temperature' + '_' + rom, u: 'C' };
                                 sensor.v = (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15).round(2);
                                 data.modules.push(sensor);
                             }
 
                             //Humidity
                             if (mask_em_acw_thw >> 1 & 0x01) {
-                                let sensor = {};
-                                sensor.n = prefix_name + '_' + 'humidity' + '_' + rom.toUpperCase();
-                                sensor.u = '%';
+                                let sensor = { n: prefix_name + '_' + 'humidity' + '_' + rom, u: '%' };
                                 sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
                                 data.modules.push(sensor);
                             }
 
                             //Lux
                             if (mask_em_acw_thw >> 2 & 0x01) {
-                                let sensor = {};
-                                sensor.n = prefix_name + '_' + 'luminosity' + '_' + rom.toUpperCase();
-                                sensor.u = 'lux';
+                                let sensor = { n: prefix_name + '_' + 'luminosity' + '_' + rom, u: 'lux' };
                                 sensor.v = input.bytes[index++] | (input.bytes[index++] << 8);
                                 data.modules.push(sensor);
                             }
 
                             //Noise
                             if (mask_em_acw_thw >> 3 & 0x01) {
-                                let sensor = {};
-                                sensor.n = prefix_name + '_' + 'noise' + '_' + rom.toUpperCase();
-                                sensor.u = 'dB';
+                                let sensor = { n = prefix_name + '_' + 'noise' + '_' + rom, u = 'dB' };
                                 sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
                                 data.modules.push(sensor);
                             }
 
                             //Temperature RTDT
                             if (mask_em_acw_thw >> 4 & 0x01) {
-                                let sensor = {};
-                                sensor.n = prefix_name + '_' + 'temperature_rtdt' + '_' + rom.toUpperCase();
-                                sensor.u = 'C';
+                                let sensor = { n: prefix_name + '_' + 'temperature_rtdt' + '_' + rom, u: 'C' };
                                 sensor.v = input.bytes[index++];
                                 for (let j = 1; j < 4; j++) {
                                     sensor.v |= (input.bytes[index++] << (8 * j));
@@ -562,32 +471,23 @@ function decodeUplink(input) {
         // LoRaWAN Configuration
         if (mask_lorawan !== 0) {
             if (mask_lorawan >> 0 & 0x01) {
-                let time_report = {};
-                time_report.n = 'time_report';
-                time_report.v = (input.bytes[index++] << 8) | input.bytes[index++];
-                time_report.u = 'minutes';
+                let time_report = { n: 'time_report', u: 'minutes', v: (input.bytes[index++] << 8) | input.bytes[index++] };
                 data.lorawan.push(time_report);
             }
 
             if (mask_lorawan >> 4 & 0x01) {
-                let adr = {};
-                adr.n = 'adr';
-                adr.v = status_enable[input.bytes[index++]];
+                let adr = { n: 'adr', v: status_enable[input.bytes[index++]] };
                 data.lorawan.push(adr);
             }
 
             if (mask_lorawan >> 7 & 0x01) {
                 const regions = ["AS923", "AU915", "CN470", "CN779", "EU433", "EU868", "KR920", "IN865", "US915", "RU864", "LA915"];
-                let region = {};
-                region.n = 'region';
-                region.v = regions[input.bytes[index++]];
+                let region = { n: 'region', v: regions[input.bytes[index++]] };
                 data.lorawan.push(region);
             }
 
             if (mask_lorawan >> 9 & 0x01) {
-                let confirmed_message = {};
-                confirmed_message.n = 'confirmed_message';
-                confirmed_message.v = status_enable[input.bytes[index++]];
+                let confirmed_message = { n: 'confirmed_message', v: status_enable[input.bytes[index++]] };
                 data.lorawan.push(confirmed_message);
             }
         }
@@ -597,28 +497,16 @@ function decodeUplink(input) {
             data.device = [];
 
             if (mask_device >> 0 & 0x01) {
-                let delta_enable = {};
-                delta_enable.n = 'delta_enable';
-                delta_enable.v = status_enable[input.bytes[index++]];
-                delta_enable.u = 'bool';
+                let delta_enable = { n: 'delta_enable', v: status_enable[input.bytes[index++]], u: 'bool' };
                 data.device.push(delta_enable);
 
-                let delta_internal_temp = {};
-                delta_internal_temp.n = 'delta_internal_temp';
-                delta_internal_temp.v = (input.bytes[index++] / 10.0);
-                delta_internal_temp.u = 'Celsius';
+                let delta_internal_temp = { n: 'delta_internal_temp', v: (input.bytes[index++] / 10.0), u: 'C' };
                 data.device.push(delta_internal_temp);
 
-                let delta_internal_humi = {};
-                delta_internal_humi.n = 'delta_internal_humi';
-                delta_internal_humi.v = (input.bytes[index++] / 10.0);
-                delta_internal_humi.u = '%';
+                let delta_internal_humi = { n: 'delta_internal_humi', v: (input.bytes[index++] / 10.0), u: '%' };
                 data.device.push(delta_internal_humi);
 
-                let delta_probe_temp = {};
-                delta_probe_temp.n = 'delta_probe_temp';
-                delta_probe_temp.v = (input.bytes[index++] / 10.0);
-                delta_probe_temp.u = 'Celsius';
+                let delta_probe_temp = { n: 'delta_probe_temp', v: (input.bytes[index++] / 10.0), u: 'C' };
                 data.device.push(delta_probe_temp);
             }
 

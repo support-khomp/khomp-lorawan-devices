@@ -7,6 +7,37 @@
 //
 // Output must be an object with the following fields:
 // - data = Object representing the decoded payload.
+
+const model_name = {
+    16: 'ITC 201',
+    17: 'ITC 204',
+    18: 'ITC 211',
+    19: 'ITC 214'
+};
+const pulse_width_name = [
+    'a',
+    'b',
+    'c',
+    'd'];
+const counter_name = [
+    'flux_a',
+    'flux_b',
+    'flux_c',
+    'flux_d',
+    'reflux_a',
+    'reflux_b'];
+const op_mode_name = [
+    'Single flux',
+    'Single flux and reflux',
+    'Single flux and reflux digital',
+    'Single flux and reflux quadrature',
+    'Dual flux',
+    'Dual flux and reflux',
+    'Dual flux and reflux digital',
+    'Dual flux and reflux quadrature',
+    'Triple flux',
+    'Quad flux'];
+
 function decodeUplink(input) {
     let i = 0;
     let mask = 0;
@@ -17,126 +48,114 @@ function decodeUplink(input) {
     data.device = [];
     data.sensors = [];
 
-    let model = { n: 'model', u: 'string' };
-    switch (input.fPort) {
-        case 16: model.v = "ITC 201"; break;
-        case 17: model.v = "ITC 204"; break;
-        case 18: model.v = "ITC 211"; break;
-        case 19: model.v = "ITC 214"; break;
-        default: model.v = "Unknown model"; return { data };
-    }
+    data.device.push({
+        n: 'model',
+        v: model_name[input.fPort]
+    });
 
-    data.device.push(model);
-    mask = (input.bytes[i++] << 8) | input.bytes[i++];
+    mask = read_uint16(input.bytes.slice(i, i += 2));
 
     // Firmware
     if (mask >> mask_index++ & 0x01) {
-        let firmware = { n: 'firmware_version', u: 'string' };
-        firmware.v = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
-        firmware.v += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
-        data.device.push(firmware);
+        let firmware = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
+        firmware += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
+        data.device.push({
+            n: 'firmware_version',
+            v: firmware
+        });
     }
 
     // battery
     if (mask >> mask_index++ & 0x01) {
-        let battery = { n: 'battery', u: 'V' };
-        battery.v = ((input.bytes[i++] / 100.0) + 1).round(2);
-        data.sensors.push(battery);
+        data.sensors.push({
+            n: 'battery',
+            v: ((input.bytes[i++] / 100.0) + 1).round(2),
+            u: 'V'
+        });
     }
 
     // Temperature
     if (mask >> mask_index++ & 0x01) {
-        let temperature = { n: 'temperature', u: 'C' };
-        temperature.v = (input.bytes[i++] / 2.0).round(1);
-        data.sensors.push(temperature);
+        data.sensors.push({
+            n: 'temperature',
+            v: (input.bytes[i++] / 2.0).round(1),
+            u: 'C'
+        });
     }
 
     // Humidity
     if (mask >> mask_index++ & 0x01) {
-        let humidity = { n: 'humidity', u: '%' };
-        humidity.v = (input.bytes[i++] / 2.0).round(1);
-        data.sensors.push(humidity);
+        data.sensors.push({
+            n: 'humidity',
+            v: (input.bytes[i++] / 2.0).round(1),
+            u: '%'
+        });
     }
 
     // operation_mode
     if (mask >> mask_index++ & 0x01) {
-        let operation_mode = { n: 'operation_mode', u: 'string' };
-        const str_op_mode = ["Single flux",
-            "Single flux and reflux",
-            "Single flux and reflux digital",
-            "Single flux and reflux quadrature",
-            "Dual flux",
-            "Dual flux and reflux",
-            "Dual flux and reflux digital",
-            "Dual flux and reflux quadrature",
-            "Triple flux",
-            "Quad flux"];
-        operation_mode.v = str_op_mode[input.bytes[i++]];
-        data.sensors.push(operation_mode);
+        data.sensors.push({
+            n: 'operation_mode',
+            v: op_mode_name[input.bytes[i++]]
+        });
     }
 
     if (decode_ver > 1) {
         // resolution
         if (mask >> mask_index++ & 0x01) {
-            let resolution = { n: 'resolution', u: 'L/pulse' };
-            const str_resolution = ["1", "10",
-                "100", "1000", "10000"];
-            resolution.v = str_resolution[input.bytes[i++]];
-            data.sensors.push(resolution);
+            data.sensors.push({
+                n: 'resolution',
+                v: Math.pow(10, input.bytes[i++]),
+                u: 'L/pulse'
+            });
         }
     }
 
     // fraud_bit
-    let fraud = { n: 'fraud', u: 'string' };
+    let fraud = { n: 'fraud', v: 'not detected' };
     if (mask >> mask_index++ & 0x01) {
         fraud.v = 'detected';
     }
-    else {
-        fraud.v = 'not detected';
-    }
-
     data.sensors.push(fraud);
 
-    // Counters
-    const counter_name = ["flux_a", "flux_b", "flux_c", "flux_d", "reflux_a", "reflux_b"];
+    // Counters    
     for (var index = 0; index < 6; index++) {
         if (mask >> mask_index++ & 0x01) {
-            let counter = { u: 'counter' };
-            counter.n = 'counter_' + counter_name[index];
-            counter.v = ((input.bytes[i++] << 24) | (input.bytes[i++] << 16) | (input.bytes[i++] << 8) | input.bytes[i++]);
-            data.sensors.push(counter);
+            data.sensors.push({
+                n: 'counter_' + counter_name[index],
+                v: read_uint32(input.bytes.slice(i, i += 4)),
+                u: 'counter'
+            });
         }
     }
 
     // Pulse width
     if (mask >> mask_index++ & 0x01) {
         let flux_in_use = (mask >> 7) & 0x0F;
-        let flux_in_use_index = 0;
-        const pulse_width_name = ["a", "b", "c", "d"];
         for (var index = 0; index < 4; index++) {
-            if (flux_in_use >> flux_in_use_index++ & 0x01) {
-                let pulse_width_flux = { u: 'ms/10' };
-                pulse_width_flux.n = 'pulse_width_flux_' + pulse_width_name[flux_in_use_index - 1];
-                pulse_width_flux.v = (input.bytes[i++] << 8) | input.bytes[i++];
-                data.sensors.push(pulse_width_flux);
+            if (flux_in_use >> index & 0x01) {
+                data.sensors.push({
+                    n: 'pulse_width_flux_' + pulse_width_name[index],
+                    v: read_uint16(input.bytes.slice(i, i += 2)),
+                    u: 'ms/10'
+                });
             }
         }
     }
 
     // timestamp_sync
-    let timestamp_sync = { n: 'timestamp_sync', u: 'string' };
+    let timestamp_sync = { n: 'timestamp_sync', v: 'not syncronized' };
     if (mask >> mask_index++ & 0x01) {
         timestamp_sync.v = 'syncronized';
-    }
-    else {
-        timestamp_sync.v = 'not syncronized';
     }
     data.sensors.push(timestamp_sync);
 
     // Counter insert alarm    
     if (mask >> mask_index++ & 0x01) {
-        const counter_insert = { n: 'counter_insert', u: 'string', v: 'alarm' };
-        data.sensors.push(counter_insert);
+        data.sensors.push({
+            n: 'counter_insert',
+            v: 'alarm'
+        });
     }
 
     return { data };
@@ -145,4 +164,14 @@ function decodeUplink(input) {
 Number.prototype.round = function (n) {
     const d = Math.pow(10, n);
     return Math.round((this + Number.EPSILON) * d) / d;
+}
+
+function read_uint16(bytes) {
+    let value = (bytes[0] << 8) + bytes[1];
+    return value & 0xffff;
+}
+
+function read_uint32(bytes) {
+    let value = (bytes[0] << 24) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
+    return value & 0xffffffff;
 }

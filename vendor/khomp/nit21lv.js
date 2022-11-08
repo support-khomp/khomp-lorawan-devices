@@ -7,89 +7,121 @@
 //
 // Output must be an object with the following fields:
 // - data = Object representing the decoded payload.
+const axis_name = ['x', 'y', 'z'];
+
 function decodeUplink(input) {
     let i = 0;
+    let mask = 0;
     let data = {};
     let decode_ver = input.bytes[i++];
-    const axis_name = ['x', 'y', 'z'];
 
     data.device = [];
     data.sensors = [];
 
-    let model = { n: 'model', u: 'string', v: 'Unknown model' };
-    if (input.fPort == 13) {
-        model.v = 'NIT 21LV';
-    }
-    else {
+    if (input.fPort != 13) {
+        data.device.push({
+            n: 'model',
+            v: 'Unknown model'
+        });
         return { data };
     }
 
-    data.device.push(model);
+    data.device.push({
+        n: 'model',
+        v: 'NIT 21LV'
+    });
 
     mask = (input.bytes[i++] << 8) | input.bytes[i++];
 
     // Firmware
     if (mask >> 0 & 0x01) {
-        let firmware = { n: 'firmware_version' };
-        firmware.v = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
-        firmware.v += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
-        data.device.push(firmware);
+        let firmware = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
+        firmware += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
+        data.device.push({
+            n: 'firmware_version',
+            v: firmware
+        });
     }
 
     // Battery
     if (mask >> 1 & 0x01) {
-        let battery = { n: 'battery', u: 'V' };
-        battery.v = ((input.bytes[i++] / 100) + 1).toFixed(2);
-        data.device.push(battery);
+        data.device.push({
+            n: 'battery',
+            v: ((input.bytes[i++] / 100) + 1).round(2),
+            u: 'V'
+        });
     }
 
     // Temperature Int
     if (mask >> 2 & 0x01) {
-        let temperature = { n: 'temperature', u: 'C' };
-        temperature.v = (input.bytes[i++] / 2).toFixed(1);
-        data.sensors.push(temperature);
+        data.sensors.push({
+            n: 'temperature',
+            v: (input.bytes[i++] / 2).round(1),
+            u: 'C'
+        });
     }
 
     // Humidity Int
     if (mask >> 3 & 0x01) {
-        let humidity = { n: 'humidity', u: '%' };
-        humidity.v = (input.bytes[i++] / 2).toFixed(1);
-        data.sensors.push(humidity);
+        data.sensors.push({
+            n: 'humidity',
+            v: (input.bytes[i++] / 2).round(1),
+            u: '%'
+        });
     }
 
     // RMS
     if (mask >> 4 & 0x01) {
         for (let index = 0; index < 3; index++) {
-            let rms = { u: 'ms2', n: 'rms_' + axis_name[index] };
-            rms.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 1000.0).round(4);
-            data.sensors.push(rms);
+            data.sensors.push({
+                u: 'ms2',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 10000.0).round(4),
+                n: 'rms_' + axis_name[index]
+            });
         }
     }
 
     // Kurtosis
     if (mask >> 5 & 0x01) {
         for (let index = 0; index < 3; index++) {
-            let kurtosis = { u: 'ms2', n: 'kurtosis_' + axis_name[index] };
-            kurtosis.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 1000.0).round(4);
-            data.sensors.push(kurtosis);
+            data.sensors.push({
+                u: 'factor',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
+                n: 'kurtosis_' + axis_name[index]
+            });
         }
     }
 
     // Peak to Peak
     if (mask >> 6 & 0x01) {
         for (let index = 0; index < 3; index++) {
-            let peak_to_peak = { u: 'ms2', n: 'peak_to_peak_' + axis_name[index] };
-            peak_to_peak.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 1000.0).round(4);
-            data.sensors.push(peak_to_peak);
+            data.sensors.push({
+                u: 'ms2',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 10000.0).round(4),
+                n: 'peak_to_peak_' + axis_name[index]
+            });
         }
     }
 
     // Crest Factor
     if (mask >> 7 & 0x01) {
         for (let index = 0; index < 3; index++) {
-            let crest_factor = { u: 'ms2', n: 'crest_factor_' + axis_name[index] };
-            crest_factor.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 1000.0).round(4);
-            data.sensors.push(crest_factor);
+            data.sensors.push({
+                u: 'dB',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
+                n: 'crest_factor_' + axis_name[index]
+            });
+        }
+    }
+
+    // Velocity
+    if (mask >> 8 & 0x01) {
+        for (let index = 0; index < 3; index++) {
+            data.sensors.push({
+                u: 'mms',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
+                n: 'velocity_' + axis_name[index]
+            });
         }
     }
 
@@ -99,4 +131,9 @@ function decodeUplink(input) {
 Number.prototype.round = function (n) {
     const d = Math.pow(10, n);
     return Math.round((this + Number.EPSILON) * d) / d;
+}
+
+function read_uint16(bytes) {
+    let value = (bytes[0] << 8) + bytes[1];
+    return value & 0xffff;
 }

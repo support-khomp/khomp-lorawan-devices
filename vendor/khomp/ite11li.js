@@ -7,6 +7,13 @@
 //
 // Output must be an object with the following fields:
 // - data = Object representing the decoded payload.
+
+const phases_name = ["phase_a", "phase_b", "phase_c"];
+const tc_config_name = [
+    "POWCT-T16-150-333", "POWCT-T24-250-333", "POWCT-T36-630-333", 
+    "POWCT-T50-1500-333", "POWCT-T16-25-333", "POWCT-T16-40-333", 
+    "POWCT-T16-100-333"];
+
 function decodeUplink(input) {
     let i = 0;
     let data = {};
@@ -15,86 +22,124 @@ function decodeUplink(input) {
     data.device = [];
     data.sensors = [];
 
-    let model = { n: 'model', u: 'string', v: 'Unknown model' };
-    if (input.fPort == 10) {
-        model.v = "ITE 11LI";
-    }
-    else {
+    if (input.fPort != 10) {
+        data.device.push({
+            n: 'model',
+            v: 'Unknown model'
+        });
         return { data };
     }
 
-    data.device.push(model);
+    data.device.push({
+        n: 'model',
+        v: 'ITE 11LI'
+    });
 
-    mask = (input.bytes[i++] << 8) | input.bytes[i++];
+    mask = read_uint16(input.bytes.slice(i, i += 2));
 
-    // Firmware    
+    // Firmware
     if (mask >> 0 & 0x01) {
-        let firmware = { n: 'firmware_version', u: 'string' };
-        firmware.v = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
-        firmware.v += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
-        data.device.push(firmware);
+        let firmware = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
+        firmware += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
+        data.device.push({
+            n: 'firmware_version',
+            v: firmware
+        });
     }
 
     // Temperature
     if (mask >> 1 & 0x01) {
-        let temperature = { n: 'temperature', u: 'C' };
-        temperature.v = (input.bytes[i++] / 2).round(1);
-        data.sensors.push(temperature);
+        data.sensors.push({
+            n: 'temperature',
+            v: (input.bytes[i++] / 2).round(1),
+            u: 'C'
+        });
     }
 
     // Frequency
     if (mask >> 2 & 0x01) {
-        let frequency = { n: 'frequency', u: 'Hz' };
-        frequency.v = ((input.bytes[i++] / 10.0) + 45).round(1);
-        data.sensors.push(frequency);
+        data.sensors.push({
+            n: 'frequency',
+            v: ((input.bytes[i++] / 10.0) + 45).round(1),
+            u: 'Hz'
+        });
     }
 
-    const c1_state_name = ["OPEN", "CLOSED"];
-    const phases_name = ["phase_a", "phase_b", "phase_c"];
-    const tc_config_name = ["POWCT-T16-150-333", "POWCT-T24-250-333", "POWCT-T36-630-333", "POWCT-T50-1500-333", "POWCT-T16-25-333", "POWCT-T16-40-333", "POWCT-T16-100-333"];
+    let total_ac_energy = 0;
+    let total_re_energy = 0;
 
     for (let index = 0; index < 3; index++) {
         if (mask >> (3 + index) & 0x01) {
-            let voltage = { n: phases_name[index] + '_' + 'voltage', u: 'V' };
-            let current = { n: phases_name[index] + '_' + 'current', u: 'A' };
-            let pwr_factor = { n: phases_name[index] + '_' + 'pwr_factor', u: '/' };
-            let active_energy = { n: phases_name[index] + '_' + 'active_energy', u: 'kWh' };
-            let reactive_energy = { n: phases_name[index] + '_' + 'reactive_energy', u: 'kVArh' };
-            let tc_config = { n: phases_name[index] + '_' + 'tc_config' };
+            data.sensors.push({
+                n: phases_name[index] + '_' + 'voltage',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 10.0).round(1),
+                u: 'V'
+            });
 
-            voltage.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 10.0).round(1);
-
+            let current;
             if (decode_ver == 1) {
-                current.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 1000.0).round(3);
+                current = (read_uint16(input.bytes.slice(i, i += 2)) / 1000.0).round(3);
             }
             else {
-                current.v = (((input.bytes[i++] << 8) | input.bytes[i++]) / 20.0).round(2);
+                current = (read_uint16(input.bytes.slice(i, i += 2)) / 20.0).round(2);
             }
 
-            pwr_factor.v = ((input.bytes[i++] / 100.0) - 1).round(2);
+            data.sensors.push({
+                n: phases_name[index] + '_' + 'current',
+                v: current,
+                u: 'A'
+            });
 
-            active_energy.v = ((input.bytes[i++] << 24) | (input.bytes[i++] << 16) | (input.bytes[i++] << 8) | input.bytes[i++]);
-            active_energy.v = (active_energy.v / 100.0).round(2);
+            data.sensors.push({
+                n: phases_name[index] + '_' + 'pwr_factor',
+                v: ((input.bytes[i++] / 100.0) - 1).round(2),
+                u: '/'
+            });
 
-            reactive_energy.v = ((input.bytes[i++] << 24) | (input.bytes[i++] << 16) | (input.bytes[i++] << 8) | input.bytes[i++]);
-            reactive_energy.v = (reactive_energy.v / 100.0).round(2);
+            let active_energy = (read_uint32(input.bytes.slice(i, i += 4)) / 100.0).round(2);
+            data.sensors.push({
+                n: phases_name[index] + '_' + 'active_energy',
+                v: active_energy,
+                u: 'kWh'
+            });
+            total_ac_energy += active_energy;
 
-            tc_config.v = tc_config_name[input.bytes[i++]];
+            let reactive_energy = (read_uint32(input.bytes.slice(i, i += 4)) / 100.0).round(2);
+            data.sensors.push({
+                n: phases_name[index] + '_' + 'reactive_energy',
+                v: reactive_energy,
+                u: 'kVArh'
+            });
+            total_re_energy += reactive_energy;
 
-            data.sensors.push(voltage);
-            data.sensors.push(current);
-            data.sensors.push(pwr_factor);
-            data.sensors.push(active_energy);
-            data.sensors.push(reactive_energy);
-            data.sensors.push(tc_config);
+            data.sensors.push({
+                n: phases_name[index] + '_' + 'tc_config',
+                v: tc_config_name[input.bytes[i++]],
+            });
         }
     }
 
+    // Total active energy
+    data.sensors.push({
+        n: 'total_active_energy',
+        v: total_ac_energy.round(2),
+        u: 'kWh'
+    });
+
+    // Total reactive energy
+    data.sensors.push({
+        n: 'total_reactive_energy',
+        v: total_re_energy.round(2),
+        u: 'kVArh'
+    });
+
     // B1
     if (mask >> 6 & 0x01) {
-        let b1_state = { n: 'b1_state', u: 'bool' };
-        b1_state.v = c1_state_name[input.bytes[i++]];
-        data.sensors.push(b1_state);
+        data.sensors.push({
+            n: 'b1_state',
+            v: input.bytes[i++] ? 'CLOSED' : 'OPEN',
+            u: 'bool'
+        });
     }
 
     return { data };
@@ -103,4 +148,14 @@ function decodeUplink(input) {
 Number.prototype.round = function (n) {
     const d = Math.pow(10, n);
     return Math.round((this + Number.EPSILON) * d) / d;
+}
+
+function read_uint16(bytes) {
+    let value = (bytes[0] << 8) + bytes[1];
+    return value & 0xffff;
+}
+
+function read_uint32(bytes) {
+    let value = (bytes[0] << 24) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
+    return value & 0xffffffff;
 }

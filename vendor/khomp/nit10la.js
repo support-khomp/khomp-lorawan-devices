@@ -17,7 +17,7 @@ function decodeUplink(input) {
     data.sensors = [];
 
     if (decode_ver == 1) {
-        let model = { n: 'model', u: 'string' };
+        let model = { n: 'model'};
         if (input.fPort == 21) {
             model.v = "NIT 10LA";
         } else {
@@ -31,7 +31,7 @@ function decodeUplink(input) {
 
         // Firmware
         if (mask >> index_mask++ & 0x01) {
-            let firmware = { n: 'firmware_version', u: 'string' };
+            let firmware = { n: 'firmware_version'};
             firmware.v = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
             firmware.v += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
             data.device.push(firmware);
@@ -67,7 +67,7 @@ function decodeUplink(input) {
 
         // Air quality index pm2.5
         if (mask >> index_mask++ & 0x01) {
-            let air_quality_index_pm2_5 = { n: 'air_quality_index_pm2_5', u: 'string' };
+            let air_quality_index_pm2_5 = { n: 'air_quality_index_pm2_5'};
             const air_quality_index_text = ["good", "moderate", "unhealty", "very_unhealty", "hazardous"];
             air_quality_index_pm2_5.v = air_quality_index_text[input.bytes[i++]];
             data.sensors.push(air_quality_index_pm2_5);
