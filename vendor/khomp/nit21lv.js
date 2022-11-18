@@ -18,12 +18,16 @@ function decodeUplink(input) {
     data.device = [];
     data.sensors = [];
 
+    if (decode_ver != 1) {
+        return {
+            errors: ['invalid decoder version'],
+        };
+    }
+
     if (input.fPort != 13) {
-        data.device.push({
-            n: 'model',
-            v: 'Unknown model'
-        });
-        return { data };
+        return {
+            errors: ['invalid fPort'],
+        };
     }
 
     data.device.push({
@@ -46,7 +50,7 @@ function decodeUplink(input) {
     // Battery
     if (mask >> 1 & 0x01) {
         data.device.push({
-            n: 'battery',
+            n: 'battery_voltage',
             v: ((input.bytes[i++] / 100) + 1).round(2),
             u: 'V'
         });
@@ -55,18 +59,18 @@ function decodeUplink(input) {
     // Temperature Int
     if (mask >> 2 & 0x01) {
         data.sensors.push({
-            n: 'temperature',
+            n: 'internal_temperature',
             v: (input.bytes[i++] / 2).round(1),
-            u: 'C'
+            u: '°C'
         });
     }
 
     // Humidity Int
     if (mask >> 3 & 0x01) {
         data.sensors.push({
-            n: 'humidity',
+            n: 'internal_relative_humidity',
             v: (input.bytes[i++] / 2).round(1),
-            u: '%'
+            u: '% RH'
         });
     }
 
@@ -74,7 +78,7 @@ function decodeUplink(input) {
     if (mask >> 4 & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
-                u: 'ms2',
+                u: 'm/s²',
                 v: (read_uint16(input.bytes.slice(i, i += 2)) / 10000.0).round(4),
                 n: 'rms_' + axis_name[index]
             });
@@ -85,7 +89,6 @@ function decodeUplink(input) {
     if (mask >> 5 & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
-                u: 'factor',
                 v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
                 n: 'kurtosis_' + axis_name[index]
             });
@@ -96,7 +99,7 @@ function decodeUplink(input) {
     if (mask >> 6 & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
-                u: 'ms2',
+                u: 'm/s²',
                 v: (read_uint16(input.bytes.slice(i, i += 2)) / 10000.0).round(4),
                 n: 'peak_to_peak_' + axis_name[index]
             });
@@ -118,7 +121,7 @@ function decodeUplink(input) {
     if (mask >> 8 & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
-                u: 'mms',
+                u: 'mm/s',
                 v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
                 n: 'velocity_' + axis_name[index]
             });

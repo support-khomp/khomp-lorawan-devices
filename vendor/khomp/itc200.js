@@ -45,6 +45,18 @@ function decodeUplink(input) {
     let data = {};
     let decode_ver = input.bytes[i++];
 
+    if (decode_ver != 1) {
+        return {
+            errors: ['invalid decoder version'],
+        };
+    }
+
+    if (input.fPort < 16 || input.fPort < 19) {
+        return {
+            errors: ['invalid fPort'],
+        };
+    }
+
     data.device = [];
     data.sensors = [];
 
@@ -68,7 +80,7 @@ function decodeUplink(input) {
     // battery
     if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
-            n: 'battery',
+            n: 'battery_voltage',
             v: ((input.bytes[i++] / 100.0) + 1).round(2),
             u: 'V'
         });
@@ -77,18 +89,18 @@ function decodeUplink(input) {
     // Temperature
     if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
-            n: 'temperature',
+            n: 'internal_temperature',
             v: (input.bytes[i++] / 2.0).round(1),
-            u: 'C'
+            u: '°C'
         });
     }
 
     // Humidity
     if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
-            n: 'humidity',
+            n: 'internal_relative_humidity',
             v: (input.bytes[i++] / 2.0).round(1),
-            u: '%'
+            u: '%RH'
         });
     }
 
@@ -100,23 +112,22 @@ function decodeUplink(input) {
         });
     }
 
-    if (decode_ver > 1) {
-        // resolution
-        if (mask >> mask_index++ & 0x01) {
-            data.sensors.push({
-                n: 'resolution',
-                v: Math.pow(10, input.bytes[i++]),
-                u: 'L/pulse'
-            });
-        }
-    }
+    // resolution
+    if (mask >> mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'resolution',
+            v: Math.pow(10, input.bytes[i++]),
+            u: 'L/pulse'
+        });
+    }    
 
     // fraud_bit
-    let fraud = { n: 'fraud', v: 'not detected' };
     if (mask >> mask_index++ & 0x01) {
-        fraud.v = 'detected';
+        data.sensors.push({
+            n: 'fraud',
+            v: 'detected'
+        });
     }
-    data.sensors.push(fraud);
 
     // Counters    
     for (var index = 0; index < 6; index++) {
@@ -124,7 +135,6 @@ function decodeUplink(input) {
             data.sensors.push({
                 n: 'counter_' + counter_name[index],
                 v: read_uint32(input.bytes.slice(i, i += 4)),
-                u: 'counter'
             });
         }
     }

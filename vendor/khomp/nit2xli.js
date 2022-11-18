@@ -291,7 +291,7 @@ function decodeUplink(input) {
 
                                 //Lux and UV
                                 if (mask_emw104 >> 1 & 0x01) {
-                                    let emw_luminosity = { n: 'emw_luminosity', u: 'lx'; };
+                                    let emw_luminosity = { n: 'emw_luminosity', u: 'lx' };
                                     emw_luminosity.v = (input.bytes[index++] << 16) | (input.bytes[index++] << 8) | input.bytes[index++];
                                     data.modules.push(emw_luminosity);
 
@@ -436,7 +436,7 @@ function decodeUplink(input) {
 
                             //Noise
                             if (mask_em_acw_thw >> 3 & 0x01) {
-                                let sensor = { n = prefix_name + '_' + 'noise' + '_' + rom, u = 'dB' };
+                                let sensor = { n: prefix_name + '_' + 'noise' + '_' + rom, u: 'dB' };
                                 sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
                                 data.modules.push(sensor);
                             }
