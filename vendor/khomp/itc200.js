@@ -51,7 +51,7 @@ function decodeUplink(input) {
         };
     }
 
-    if (input.fPort < 16 || input.fPort < 19) {
+    if (input.fPort < 16 || input.fPort > 19) {
         return {
             errors: ['invalid fPort'],
         };
