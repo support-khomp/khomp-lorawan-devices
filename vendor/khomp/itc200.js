@@ -129,36 +129,46 @@ function decodeUplink(input) {
         });
     }
 
-    // Counters    
-    for (var index = 0; index < 6; index++) {
+    // Jump
+    let pulse_width_active = ((mask >> mask_index++) & 0x01);
+
+    // Counters Flux & Pulse Width   
+    for (var index = 0; index < 4; index++) {
+        // Counters Flux 
         if (mask >> mask_index++ & 0x01) {
             data.sensors.push({
                 n: 'counter_' + counter_name[index],
                 v: read_uint32(input.bytes.slice(i, i += 4)),
+                u: 'counter'
             });
-        }
-    }
 
-    // Pulse width
-    if (mask >> mask_index++ & 0x01) {
-        let flux_in_use = (mask >> 7) & 0x0F;
-        for (var index = 0; index < 4; index++) {
-            if (flux_in_use >> index & 0x01) {
+            // Pulse width
+            if (pulse_width_active != 0) {
                 data.sensors.push({
                     n: 'pulse_width_flux_' + pulse_width_name[index],
-                    v: read_uint16(input.bytes.slice(i, i += 2)),
-                    u: 'ms/10'
+                    v: read_uint16(input.bytes.slice(i, i += 2)) * 10,
+                    u: 'ms'
                 });
             }
         }
     }
 
-    // timestamp_sync
-    let timestamp_sync = { n: 'timestamp_sync', v: 'not syncronized' };
-    if (mask >> mask_index++ & 0x01) {
-        timestamp_sync.v = 'syncronized';
+    // Counters Reflux   
+    for (var index = 0; index < 2; index++) {
+        if (mask >> mask_index++ & 0x01) {
+            data.sensors.push({
+                n: 'counter_' + counter_name[index+4],
+                v: read_uint32(input.bytes.slice(i, i += 4)),
+                u: 'counter'
+            });
+        }
     }
-    data.sensors.push(timestamp_sync);
+
+    // Timestamp sync
+    data.sensors.push({
+        n: 'timestamp_sync',
+        v: (mask >> mask_index++ & 0x01) ? 'syncronized' : 'not syncronized'
+    });
 
     // Counter insert alarm    
     if (mask >> mask_index++ & 0x01) {

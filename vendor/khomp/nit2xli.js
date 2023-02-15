@@ -7,6 +7,7 @@
 //
 // Output must be an object with the following fields:
 // - data = Object representing the decoded payload.
+
 function decodeUplink(input) {
     let data = {};
     let index = 0;
@@ -19,20 +20,22 @@ function decodeUplink(input) {
     data.lorawan = [];
 
     if (input.fPort !== 1) {
+
+        if (input.fPort < 3 || input.fPort > 4) {
+            return {
+                errors: ['invalid fPort'],
+            };
+        }
+
+        // Decode Model
+        data.device.push({
+            n: 'model',
+            v: input.fPort == 3 ? 'NIT 20LI' : 'NIT 21LI'
+        });
+
         let mask_sensor_inte = {};
         let mask_sensor_int = {};
         let mask_sensor_ext = {};
-        const status_dry = ["OPEN", "CLOSED"];
-        const status_relay = ["NO", "NC"];
-
-        // Decode Model
-        let model = { n: 'model' };
-        switch (input.fPort) {
-            case 3: model.v = "NIT20L"; break;
-            case 4: model.v = "NIT21L"; break;
-            default: model.v = "Unknown model"; return { data };
-        }
-        data.device.push(model);
 
         mask_sensor_int = input.bytes[index++];
 
@@ -45,8 +48,9 @@ function decodeUplink(input) {
 
         // Environment Sensor
         if (mask_sensor_inte >> 0 & 0x01) {
-            let env_sensor_status = { n: 'env_sensor_status', v: 'fail' };
-            data.device.push(env_sensor_status);
+            data.device.push({ 
+                n: 'env_sensor_status', 
+                v: 'fail' });
         }
 
         // Decode Battery
@@ -74,60 +78,63 @@ function decodeUplink(input) {
         }
 
         // Decode External Power or Battery
-        let power = { n: 'power', v: 'battery' };
-        if (mask_sensor_int >> 5 & 0x01) {
-            power.v = "external";
-        }
-        data.device.push(power);
+        data.device.push({
+            n: 'power',
+            v: (mask_sensor_int >> 5 & 0x01) ? 'external' : 'battery'
+        });
 
         // Decode Temperature Int
         if (mask_sensor_int >> 3 & 0x01) {
-            let temperature = { n: 'temperature', u: 'C' };
-            temperature.v = input.bytes[index++] | (input.bytes[index++] << 8);
-            temperature.v = ((temperature.v / 100.0) - 273.15).round(2);
-            data.internal_sensors.push(temperature);
+            data.internal_sensors.push({
+                n: 'temperature',
+                v: (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15).round(2),
+                u: 'C'
+            });
         }
 
         // Decode Moisture Int
         if (mask_sensor_int >> 4 & 0x01) {
-            let humidity = { n: 'humidity', u: '%' };
-            humidity.v = input.bytes[index++] | (input.bytes[index++] << 8);
-            humidity.v = (humidity.v / 10.0).round(2);
-            data.internal_sensors.push(humidity);
+            data.internal_sensors.push({
+                n: 'humidity',
+                v: ((input.bytes[index++] | (input.bytes[index++] << 8)) / 10).round(2),
+                u: '%'
+            });
         }
 
         // Decode Drys
         if (mask_sensor_ext & 0x0F) {
             // Decode Dry 1 State
-            let dry = { u: 'boolean' };
             if (mask_sensor_ext >> 0 & 0x01) {
-                dry.n = 'c1_state';
-                dry.v = status_dry[input.bytes[index++]];
-                data.drys.push(dry);
+                data.drys.push({
+                    n: 'c1_state',
+                    v: input.bytes[index++] ? 'closed' : 'open',
+                    u: 'boolean'
+                });
             }
 
             // Decode Dry 1 Count
             if (mask_sensor_ext >> 1 & 0x01) {
-                dry.n = 'c1_count';
-                dry.v = input.bytes[index++] | (input.bytes[index++] << 8);
-                dry.u = 'counter';
-                data.drys.push(dry);
+                data.drys.push({
+                    n: 'c1_count',
+                    v: v = input.bytes[index++] | (input.bytes[index++] << 8)
+                });
             }
 
             // Decode Dry 2 State
             if (mask_sensor_ext >> 2 & 0x01) {
-                dry.n = 'c2_state';
-                dry.v = status_dry[input.bytes[index++]];
-                dry.u = 'boolean';
-                data.drys.push(dry);
+                data.drys.push({
+                    n: 'c2_state',
+                    v: input.bytes[index++] ? 'closed' : 'open',
+                    u: 'boolean'
+                });
             }
 
             // Decode Dry 2 Count
             if (mask_sensor_ext >> 3 & 0x01) {
-                dry.n = 'c2_count';
-                dry.v = input.bytes[index++] | (input.bytes[index++] << 8);
-                dry.u = 'counter';
-                data.drys.push(dry);
+                data.drys.push({
+                    n: 'c2_count',
+                    v: v = input.bytes[index++] | (input.bytes[index++] << 8)
+                });
             }
         }
 
@@ -165,19 +172,21 @@ function decodeUplink(input) {
 
                             // E1
                             if (mask_ems104 >> 0 & 0x01) {
-                                let ems = { n: 'ems_e1_temp', u: 'C' };
-                                ems.v = (input.bytes[index++] | (input.bytes[index++] << 8));
-                                ems.v = ((ems.v / 100.0) - 273.15).round(2);
-                                data.modules.push(ems);
+                                data.modules.push({
+                                    n: 'ems_e1_temp',
+                                    v: (((input.bytes[index++] | input.bytes[index++] << 8) / 100.0) - 273.15).round(2),
+                                    u: 'C'
+                                });
                             }
 
                             // KPA
-                            const kpa_name = ['e2_kpa', 'e3_kpa', 'e4_kpa'];
                             for (let index = 0; index < 3; index++) {
                                 if (mask_ems104 >> (index + 1) & 0x01) {
-                                    let ems = { u: 'kPa', n: 'ems_' + kpa_name[index] };
-                                    ems.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
-                                    data.modules.push(ems);
+                                    data.modules.push({
+                                        n: 'ems_e' + index + 2 + '_kpa',
+                                        v: ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2),
+                                        u: 'kPa',
+                                    });
                                 }
                             }
                         }
@@ -211,40 +220,14 @@ function decodeUplink(input) {
                                     }
                                 }
                             } else {
-                                // E1
-                                if (mask_emc104 >> 0 & 0x01) {
-                                    let conn = {};
-                                    conn.n = 'emc_e1_curr';
-                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
-                                    conn.u = "mA";
-                                    data.modules.push(conn);
-                                }
-
-                                // E2
-                                if (mask_emc104 >> 1 & 0x01) {
-                                    let conn = {};
-                                    conn.n = 'emc_e2_curr';
-                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
-                                    conn.u = "mA";
-                                    data.modules.push(conn);
-                                }
-
-                                // E3
-                                if (mask_emc104 >> 2 & 0x01) {
-                                    let conn = {};
-                                    conn.n = 'emc_e3_curr';
-                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
-                                    conn.u = "mA";
-                                    data.modules.push(conn);
-                                }
-
-                                // E4
-                                if (mask_emc104 >> 3 & 0x01) {
-                                    let conn = {};
-                                    conn.n = 'emc_e4_curr';
-                                    conn.v = (input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0;
-                                    conn.u = "mA";
-                                    data.modules.push(conn);
+                                for (let k = 0; k < 4; k++) {
+                                    if (mask_emc104 >> k & 0x01) {
+                                        data.modules.push({
+                                            n: 'emc_e' + (k + 1) + '_curr',
+                                            v: ((input.bytes[index++] | (input.bytes[index++] << 8)) / 1000.0).round(1),
+                                            u: 'mA'
+                                        });
+                                    }
                                 }
                             }
                         }
@@ -259,64 +242,79 @@ function decodeUplink(input) {
                             //Weather Station
                             if (mask_emw104 >> 0 & 0x01) {
                                 //Rain
-                                let emw_rain_lvl = { n: 'emw_rain_lvl', u: 'mm' };
-                                emw_rain_lvl.v = (((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0).round(1);
-                                data.modules.push(emw_rain_lvl);
+                                data.modules.push({
+                                    n: 'emw_rain_lvl',
+                                    v: (((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0).round(1),
+                                    u: 'mm'
+                                });
 
                                 //Average Wind Speed
-                                let emw_avg_wind_speed = { n: 'emw_avg_wind_speed', u: 'km/h' };
-                                emw_avg_wind_speed.v = input.bytes[index++];
-                                data.modules.push(emw_avg_wind_speed);
+                                data.modules.push({
+                                    n: 'emw_avg_wind_speed',
+                                    v: input.bytes[index++],
+                                    u: 'km/h'
+                                });
 
                                 //Gust Wind Speed
-                                let emw_gust_wind_speed = { n: 'emw_gust_wind_speed', u: 'km/h' };
-                                emw_gust_wind_speed.v = input.bytes[index++];
-                                data.modules.push(emw_gust_wind_speed);
+                                data.modules.push({
+                                    n: 'emw_gust_wind_speed',
+                                    v: input.bytes[index++],
+                                    u: 'km/h'
+                                });
 
                                 //Wind Direction
-                                let emw_wind_direction = { n: 'emw_wind_direction', u: 'graus' };
-                                emw_wind_direction.v = (input.bytes[index++] << 8) | input.bytes[index++];
-                                data.modules.push(emw_wind_direction);
+                                data.modules.push({
+                                    n: 'emw_wind_direction',
+                                    v: (input.bytes[index++] << 8) | input.bytes[index++],
+                                    u: 'graus'
+                                });
 
                                 //Temperature
-                                let emw_temperature = { n: 'emw_temperature', u: 'C' };
-                                emw_temperature.v = ((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0;
-                                emw_temperature.v = (emw_temperature.v - 273.15).round(2);
-                                data.modules.push(emw_temperature);
+                                data.modules.push({
+                                    n: 'emw_temperature',
+                                    v: ((((input.bytes[index++] << 8) | input.bytes[index++]) / 10.0) - 273.15).round(2),
+                                    u: 'C'
+                                });
 
                                 //Humidity
-                                let emw_humidity = { n: 'emw_humidity', u: '%' };
-                                emw_humidity.v = input.bytes[index++];
-                                data.modules.push(emw_humidity);
+                                data.modules.push({
+                                    n: 'emw_humidity',
+                                    v: input.bytes[index++],
+                                    u: '%'
+                                });
 
                                 //Lux and UV
                                 if (mask_emw104 >> 1 & 0x01) {
-                                    let emw_luminosity = { n: 'emw_luminosity', u: 'lx' };
-                                    emw_luminosity.v = (input.bytes[index++] << 16) | (input.bytes[index++] << 8) | input.bytes[index++];
-                                    data.modules.push(emw_luminosity);
+                                    data.modules.push({
+                                        n: 'emw_luminosity',
+                                        v: (input.bytes[index++] << 16) | (input.bytes[index++] << 8) | input.bytes[index++],
+                                        u: 'lx'
+                                    });
 
-                                    let emw_uv = { n: 'emw_uv', u: '/' };
-                                    emw_uv.v = input.bytes[index++];
-                                    emw_uv.v = (emw_uv.v / 10.0).round(1);
-                                    data.modules.push(emw_uv);
+                                    data.modules.push({
+                                        n: 'emw_uv',
+                                        v: (input.bytes[index++] / 10.0).round(1),
+                                        u: '/'
+                                    });
                                 }
                             }
 
                             //Pyranometer
                             if (mask_emw104 >> 2 & 0x01) {
-                                let conn = { n: 'emw_solar_radiation', u: 'W/m²' };
-                                conn.v = (input.bytes[index++] << 8) | input.bytes[index++];
-                                conn.v = (conn.v / 10.0).round(1);
-                                data.modules.push(conn);
+                                data.modules.push({
+                                    n: 'emw_solar_radiation',
+                                    v: ((input.bytes[index++] << 8 | input.bytes[index++]) / 10.0).round(1),
+                                    u: 'W/m²'
+                                });
                             }
 
                             //Barometer
                             if (mask_emw104 >> 3 & 0x01) {
-                                let conn = { n: 'emw_atm_pres', u: 'hPa²' };
-                                conn.v = (input.bytes[index++] << 16);
-                                conn.v |= (input.bytes[index++] << 8) | input.bytes[index++] << 0;
-                                conn.v = (conn.v / 100.0).round(2);
-                                data.modules.push(conn);
+                                data.modules.push({
+                                    n: 'emw_atm_pres',
+                                    v: ((input.bytes[index++] << 16 | input.bytes[index++] << 8 | input.bytes[index++] << 0) / 100.0).round(2),
+                                    u: 'hPa²'
+                                });
                             }
                         }
                         break;
@@ -330,46 +328,46 @@ function decodeUplink(input) {
 
                             // E1
                             if (mask_emr102 >> 0 & 0x01) {
-                                let status = {};
-                                status.n = 'emr_c3_status';
-                                status.v = status_dry[(mask_data >> 0 & 0x01)];
-                                status.u = "bool";
-                                data.modules.push(status);
+                                data.modules.push({
+                                    n: 'emr_c3_status',
+                                    v: (mask_data >> 0 & 0x01) ? 'closed' : 'open',
+                                    u: 'bool'
+                                });
 
-                                let count = {};
-                                count.n = 'emr_c3_count';
-                                count.v = input.bytes[index++] | (input.bytes[index++] << 8);
-                                data.modules.push(count);
+                                data.modules.push({
+                                    n: 'emr_c3_count',
+                                    v: input.bytes[index++] | input.bytes[index++] << 8,
+                                });
                             }
 
                             // E2
                             if (mask_emr102 >> 1 & 0x01) {
-                                let status = {};
-                                status.n = 'emr_c4_status';
-                                status.v = status_dry[(mask_data >> 1 & 0x01)];
-                                status.u = "bool";
-                                data.modules.push(status);
+                                data.modules.push({
+                                    n: 'emr_c4_status',
+                                    v: (mask_data >> 1 & 0x01) ? 'closed' : 'open',
+                                    u: 'bool'
+                                });
 
-                                let count = {};
-                                count.n = 'emr_c4_count';
-                                count.v = input.bytes[index++] | (input.bytes[index++] << 8);
-                                data.modules.push(count);
+                                data.modules.push({
+                                    n: 'emr_c4_count',
+                                    v: input.bytes[index++] | input.bytes[index++] << 8,
+                                });
                             }
 
                             // E3
                             if (mask_emr102 >> 2 & 0x01) {
-                                let conn = {};
-                                conn.n = 'emr_b3_relay';
-                                conn.v = status_relay[(mask_data >> 2 & 0x01)];
-                                data.modules.push(conn);
+                                data.modules.push({
+                                    n: 'emr_b3_relay',
+                                    v: (mask_data >> 2 & 0x01) ? 'NC' : 'NO'
+                                });
                             }
 
                             // E4
                             if (mask_emr102 >> 3 & 0x01) {
-                                let conn = {};
-                                conn.n = 'emr_b4_relay';
-                                conn.v = status_relay[(mask_data >> 3 & 0x01)];
-                                data.modules.push(conn);
+                                data.modules.push({
+                                    n: 'emr_b4_relay',
+                                    v: (mask_data >> 3 & 0x01) ? 'NC' : 'NO'
+                                });
                             }
 
                         }
@@ -398,7 +396,7 @@ function decodeUplink(input) {
                                 }
                             }
 
-                            prefix_name = em_thw_acw_name[one_wire_ext_model + 1]
+                            prefix_name = em_thw_acw_name[one_wire_ext_model - 1];
 
                             //ROM
                             if ((mask_sensor_ext >> 4 & 0x07) && (mask_sensor_ext >> 7 & 0x00)) {
@@ -415,41 +413,47 @@ function decodeUplink(input) {
 
                             //Temperature
                             if (mask_em_acw_thw >> 0 & 0x01) {
-                                let sensor = { n: prefix_name + '_' + 'temperature' + '_' + rom, u: 'C' };
-                                sensor.v = (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15).round(2);
-                                data.modules.push(sensor);
+                                data.modules.push({
+                                    n: prefix_name + '_' + 'temperature' + '_' + rom,
+                                    v: (((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0) - 273.15).round(2),
+                                    u: 'C'
+                                });
                             }
 
                             //Humidity
                             if (mask_em_acw_thw >> 1 & 0x01) {
-                                let sensor = { n: prefix_name + '_' + 'humidity' + '_' + rom, u: '%' };
-                                sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
-                                data.modules.push(sensor);
+                                data.modules.push({
+                                    n: prefix_name + '_' + 'humidity' + '_' + rom,
+                                    v: ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2),
+                                    u: '%'
+                                });
                             }
 
                             //Lux
                             if (mask_em_acw_thw >> 2 & 0x01) {
-                                let sensor = { n: prefix_name + '_' + 'luminosity' + '_' + rom, u: 'lux' };
-                                sensor.v = input.bytes[index++] | (input.bytes[index++] << 8);
-                                data.modules.push(sensor);
+                                data.modules.push({
+                                    n: prefix_name + '_' + 'luminosity' + '_' + rom,
+                                    v: input.bytes[index++] | (input.bytes[index++] << 8),
+                                    u: 'lux'
+                                });
                             }
 
                             //Noise
                             if (mask_em_acw_thw >> 3 & 0x01) {
-                                let sensor = { n: prefix_name + '_' + 'noise' + '_' + rom, u: 'dB' };
-                                sensor.v = ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2);
-                                data.modules.push(sensor);
+                                data.modules.push({
+                                    n: prefix_name + '_' + 'noise' + '_' + rom,
+                                    v: ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2),
+                                    u: 'dB'
+                                });
                             }
 
                             //Temperature RTDT
                             if (mask_em_acw_thw >> 4 & 0x01) {
-                                let sensor = { n: prefix_name + '_' + 'temperature_rtdt' + '_' + rom, u: 'C' };
-                                sensor.v = input.bytes[index++];
-                                for (let j = 1; j < 4; j++) {
-                                    sensor.v |= (input.bytes[index++] << (8 * j));
-                                }
-                                sensor.v = ((sensor.v / 100.0) - 273.15).round(2);
-                                data.modules.push(sensor);
+                                data.modules.push({
+                                    n: prefix_name + '_' + 'temperature_rtdt' + '_' + rom,
+                                    v: ((read_uint32(input.bytes.slice(index, index += 4)) / 100.0) - 273.15).round(2),
+                                    u: 'C'
+                                });
                             }
                         }
                         break;
@@ -471,113 +475,113 @@ function decodeUplink(input) {
         // LoRaWAN Configuration
         if (mask_lorawan !== 0) {
             if (mask_lorawan >> 0 & 0x01) {
-                let time_report = { n: 'time_report', u: 'minutes', v: (input.bytes[index++] << 8) | input.bytes[index++] };
-                data.lorawan.push(time_report);
+                let time_report = ((input.bytes[index++] << 8) | input.bytes[index++]) * 60;
+                data.lorawan.push({
+                    n: 'time_report',
+                    u: 'seconds',
+                    v: time_report ? time_report : 30
+                });
             }
 
             if (mask_lorawan >> 4 & 0x01) {
-                let adr = { n: 'adr', v: status_enable[input.bytes[index++]] };
-                data.lorawan.push(adr);
+                data.lorawan.push({
+                    n: 'adr',
+                    v: status_enable[input.bytes[index++]]
+                });
             }
 
             if (mask_lorawan >> 7 & 0x01) {
                 const regions = ["AS923", "AU915", "CN470", "CN779", "EU433", "EU868", "KR920", "IN865", "US915", "RU864", "LA915"];
-                let region = { n: 'region', v: regions[input.bytes[index++]] };
-                data.lorawan.push(region);
+                data.lorawan.push({
+                    n: 'region',
+                    v: regions[input.bytes[index++]]
+                });
             }
 
             if (mask_lorawan >> 9 & 0x01) {
-                let confirmed_message = { n: 'confirmed_message', v: status_enable[input.bytes[index++]] };
-                data.lorawan.push(confirmed_message);
+                data.lorawan.push({
+                    n: 'confirmed_message',
+                    v: status_enable[input.bytes[index++]]
+                });
             }
         }
 
         // Device Configuration
         if (mask_device !== 0) {
-            data.device = [];
-
             if (mask_device >> 0 & 0x01) {
-                let delta_enable = { n: 'delta_enable', v: status_enable[input.bytes[index++]], u: 'bool' };
-                data.device.push(delta_enable);
+                data.device.push({
+                    n: 'delta_enable',
+                    v: status_enable[input.bytes[index++]],
+                    u: 'bool'
+                });
 
-                let delta_internal_temp = { n: 'delta_internal_temp', v: (input.bytes[index++] / 10.0), u: 'C' };
-                data.device.push(delta_internal_temp);
+                data.device.push({
+                    n: 'delta_internal_temp',
+                    v: (input.bytes[index++] / 10.0),
+                    u: 'C'
+                });
 
-                let delta_internal_humi = { n: 'delta_internal_humi', v: (input.bytes[index++] / 10.0), u: '%' };
-                data.device.push(delta_internal_humi);
+                data.device.push({
+                    n: 'delta_internal_humi',
+                    v: (input.bytes[index++] / 10.0),
+                    u: '%'
+                });
 
-                let delta_probe_temp = { n: 'delta_probe_temp', v: (input.bytes[index++] / 10.0), u: 'C' };
-                data.device.push(delta_probe_temp);
+                data.device.push({
+                    n: 'delta_probe_temp',
+                    v: (input.bytes[index++] / 10.0),
+                    u: 'C'
+                });
             }
 
             if (mask_device >> 1 & 0x01) {
                 let dry_mask = input.bytes[index++];
-                const dry_behavior_string = ["event", "high_frequency"];
 
-                let dry1_behavior = {};
-                dry1_behavior.n = 'dry1_behavior';
-                dry1_behavior.v = dry_behavior_string[(dry_mask >> 0) & 0x01];
-                data.device.push(dry1_behavior);
+                data.device.push({
+                    n: 'dry1_behavior',
+                    v: (dry_mask >> 0 & 0x01) ? 'high_frequency' : 'event'
+                });
 
-                let dry2_behavior = {};
-                dry2_behavior.n = 'dry2_behavior';
-                dry2_behavior.v = dry_behavior_string[(dry_mask >> 1) & 0x01];
-                data.device.push(dry2_behavior);
+                data.device.push({
+                    n: 'dry2_behavior',
+                    v: (dry_mask >> 1 & 0x01) ? 'high_frequency' : 'event'
+                });
 
-                let dry1_send_periodic = {};
-                dry1_send_periodic.n = 'dry1_send_periodic';
-                dry1_send_periodic.v = status_enable[(dry_mask >> 2) & 0x01];
-                data.device.push(dry1_send_periodic);
+                data.device.push({
+                    n: 'dry1_send_periodic',
+                    v: (dry_mask >> 2 & 0x01) ? 'enable' : 'disable'
+                });
 
-                let dry2_send_periodic = {};
-                dry2_send_periodic.n = 'dry2_send_periodic';
-                dry2_send_periodic.v = status_enable[(dry_mask >> 3) & 0x01];
-                data.device.push(dry2_send_periodic);
+                data.device.push({
+                    n: 'dry2_send_periodic',
+                    v: (dry_mask >> 3 & 0x01) ? 'enable' : 'disable'
+                });
             }
 
             if (mask_device >> 2 & 0x01) {
                 let emc_mask = input.bytes[index++];
 
-                let emc_e1 = {};
-                emc_e1.n = 'emc_e1';
-                emc_e1.v = status_enable[(emc_mask >> 0) & 0x01];
-                data.device.push(emc_e1);
+                for (let i = 0; i < 4; i++) {
+                    if (emc_mask >> i & 0x01) {
+                        data.modules.push({
+                            n: 'emc_e' + (i + 1),
+                            v: (emc_mask >> i & 0x01) ? 'enable' : 'disable'
+                        });
+                    }
+                }
 
-                let emc_e2 = {};
-                emc_e2.n = 'emc_e2';
-                emc_e2.v = status_enable[(emc_mask >> 1) & 0x01];
-                data.device.push(emc_e2);
+                const em_cfg = ['min', 'max', 'avg'];
+                for (let i = 0; i < 3; i++) {
+                    data.modules.push({
+                        n: 'emc_' + em_cfg[i],
+                        v: (emc_mask >> (i+5) & 0x01) ? 'enable' : 'disable'
+                    });
+                }
 
-                let emc_e3 = {};
-                emc_e3.n = 'emc_e3';
-                emc_e3.v = status_enable[(emc_mask >> 2) & 0x01];
-                data.device.push(emc_e3);
-
-                let emc_e4 = {};
-                emc_e4.n = 'emc_e4';
-                emc_e4.v = status_enable[(emc_mask >> 3) & 0x01];
-                data.device.push(emc_e4);
-
-                let emc_min = {};
-                emc_min.n = 'emc_min';
-                emc_min.v = status_enable[(emc_mask >> 5) & 0x01];
-                data.device.push(emc_min);
-
-                let emc_max = {};
-                emc_max.n = 'emc_max';
-                emc_max.v = status_enable[(emc_mask >> 6) & 0x01];
-                data.device.push(emc_max);
-
-                let emc_avg = {};
-                emc_avg.n = 'emc_avg';
-                emc_avg.v = status_enable[(emc_mask >> 7) & 0x01];
-                data.device.push(emc_avg);
-
-                let emc_cali = {};
-                const status_cali = ["not_calibrated", "calibrated"];
-                emc_cali.n = 'emc_avg';
-                emc_cali.v = status_cali[input.bytes[index++]];
-                data.device.push(emc_cali);
+                data.device.push({
+                    n: 'emc_calibration',
+                    v: input.bytes[index++] ? 'calibrated' : 'not_calibrated'
+                });
             }
         }
     }
@@ -588,4 +592,14 @@ function decodeUplink(input) {
 Number.prototype.round = function (n) {
     const d = Math.pow(10, n);
     return Math.round((this + Number.EPSILON) * d) / d;
+}
+
+function read_uint16(bytes) {
+    let value = (bytes[0] << 8) + bytes[1];
+    return value & 0xffff;
+}
+
+function read_uint32(bytes) {
+    let value = (bytes[0] << 24) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
+    return value & 0xffffffff;
 }

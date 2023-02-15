@@ -12,12 +12,18 @@ const op_mode_str = [
     "disable",
     "dry",
     "counter",
-    "dry with counter"];
+    "dry with counter",
+	"counter time",
+  	"dry with counter time",
+    "counter and counter time",
+  	"dry with counter and counter time",
+	];
 
 function decodeUplink(input) {
     let i = 0;
-    let mask = 0;
-    let mask_index = 0;
+    let data_mask = 0;
+    let data_mask_index = 0;
+    let inputs_config = 0;
     let data = {};
     let decode_ver = input.bytes[i++];
 
@@ -41,12 +47,14 @@ function decodeUplink(input) {
         v: 'NIT 50CL'
     });
 
-    mask = read_uint16(input.bytes.slice(i, i += 2));
+    // Extract the data mask
+    data_mask = input.bytes[i++];
 
-
+    // Extract the inputs config
+    inputs_config = read_uint16(input.bytes.slice(i, i += 2));
 
     // Firmware
-    if (mask >> mask_index++ & 0x01) {
+    if (data_mask >> data_mask_index++ & 0x01) {
         let firmware = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
         firmware += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
         data.device.push({
@@ -58,39 +66,51 @@ function decodeUplink(input) {
     // Power source
     data.sensors.push({
         n: 'power_source',
-        v: (mask >> mask_index++ & 0x01) ? 'external' : 'battery'
+        v: (data_mask >> data_mask_index++ & 0x01) ? 'external' : 'battery'
     });
 
-    // battery
-    if (mask >> mask_index++ & 0x01) {
+    // Battery
+    if (data_mask >> data_mask_index++ & 0x01) {
         data.sensors.push({
             n: 'battery_voltage',
             v: ((input.bytes[i++] / 100.0) + 1).round(2),
             u: 'V'
         });
     }
+  
+    // Debounce
+    if (data_mask >> data_mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'debounce_time',
+            v: (input.bytes[i++] * 10),
+            u: 'ms'
+        });
+    }
 
-    // Extract the mask inputs config
-    let mask_inputs_config = mask >> 3 & 0x3FF;
+    // FIFO buffer
+    data.sensors.push({
+        n: 'buffered_events',
+        v: ((data_mask >> data_mask_index++) & 0x01) ? input.bytes[i++] : 0
+    });
 
-    // Extract the mask inputs config
+    // Inputs config
     for (let index = 0; index < 5; index++) {
         data.sensors.push({
             n: 'in' + (index + 1) + '_op_mode',
-            v: op_mode_str[(mask_inputs_config >> (index * 2) & 0x03)],
+            v: op_mode_str[(inputs_config >> (index * 3) & 0x07)],
         });
     }
 
     // Inputs status mask
-    if (mask >> mask_index++ & 0x01) {
-        let mask_inputs_status = input.bytes[i++] & 0x1F;
+    if (data_mask >> data_mask_index++ & 0x01) {
+        let inputs_status = input.bytes[i++] & 0x1F;
         for (let index = 0; index < 5; index++) {
             // Get input status
             // Check if the config is a dry or a dry with counter
-            if (mask_inputs_config >> (index * 2) & 0x01) {
+            if (inputs_config >> (index * 3) & 0x01) {
                 data.sensors.push({
                     n: 'in' + (index + 1),
-                    v: (mask_inputs_status >> index & 0x01) ? 'closed' : 'open',
+                    v: (inputs_status >> index & 0x01) ? 'closed' : 'open',
                 });
             }
         }
@@ -99,14 +119,26 @@ function decodeUplink(input) {
     // Get counters
     for (let index = 0; index < 5; index++) {
         // If the type of input is a counter
-        if ((mask_inputs_config >> (index * 2) & 0x02) != 0) {
+        if ((inputs_config >> (index * 3) & 0x02) != 0) {
             data.sensors.push({
                 n: 'counter_in' + (index + 1),
                 v: read_uint32(input.bytes.slice(i, i += 4)),
             });
         }
     }
-
+  
+  // Get counters time
+    for (let index = 0; index < 5; index++) {
+        // If the type of input is a counter time
+        if ((inputs_config >> (index * 3) & 0x04) != 0) {
+            data.sensors.push({
+                n: 'counter_time_in' + (index + 1),
+                v: read_uint32(input.bytes.slice(i, i += 4)),
+              	u: 'seconds'
+            });
+        }
+    }
+  
     return { data };
 }
 

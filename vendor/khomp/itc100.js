@@ -10,149 +10,127 @@
 function decodeUplink(input) {
     var i = 0;
     var data = {};
-    var device = {};
-    var bytes = input.bytes;
-    var port = input.fPort;
 
-    data.device = []; // vector to keep data after treatment
-    data.sensor = []; // vector to keep data after treatment
-
-    var model = {};
-    model.n = 'model';
-    model.u = 'string';
-    switch (port) {
-        //LoRaWAN port communication for ITC 100
-        case 9:
-            model.v = "ITC100";
-            break;
-        default:
-            model.v = "unknow_model";
-            return { data };
+    if (input.fPort != 9) {
+        return {
+            errors: ['invalid fPort'],
+        };
     }
-    data.device.push(model);
+
+    data.device = [];
+    data.sensors = [];
+
+    // Model
+    data.device.push({
+        n: 'model',
+        v: 'ITC 100'
+    });
 
     // OPERATION MODE
-    var mode = {};
-    mode.n = 'mode';
-    mode.u = 'string';
-    if (bytes[i++] === 0x4A) {
-        mode.v = 'multi_mode';
-    }
-    else if (bytes[i] == 0x4B) {
-        mode.v = 'digital_reflux_mode';
-    }
-    else {
-        mode.v = 'single_mode';
-    }
-    data.device.push(mode);
+    const op_mode_str = {
+        0x49: 'single_mode',
+        0x4A: 'multi_mode',
+        0x4B: 'digital_reflux_mode',
+    };
+
+    let mode = input.bytes[i++];
+
+    data.sensors.push({
+        n: 'operation_mode',
+        v: op_mode_str[mode],
+    });
 
     // BIT STATUS
     // Message type
-    var message = {};
-    message.n = 'message';
-    message.u = 'string';
-    if ((bytes[i] >> 6) === 0x00) // 00
-    {
-        message.v = 'normal_report';
-    } else if ((bytes[i] >> 6) === 0x01) // 01
-    {
-        message.v = 'fraud_report';
-    } else if ((bytes[i] >> 6) === 0x02) // 10
-    {
-        message.v = 'tamper_fraud_report';
-    } else if ((bytes[i] >> 6) === 0x03) // 11
-    {
-        message.v = 'ack_configuration';
-    }
-    data.sensor.push(message);
+    const msg_type_str = ['normal_report', 'fraud_report', 'tamper_fraud_report', 'ack_configuration'];
+
+    data.sensors.push({
+        n: 'message_type',
+        v: msg_type_str[((input.bytes[i] >> 6) & 0x03)],
+    });
 
     // Fraud detection
-    var fraud = {};
-    fraud.n = 'fraud';
-    fraud.u = 'string';
-    if (((bytes[i] >> 5) & 0x01) === 0x00) {
-        fraud.v = 'no_fraud';
-    } else {
-        fraud.v = 'fraud_detected';
-    }
-    data.sensor.push(fraud);
+    data.sensors.push({
+        n: 'fraud',
+        v: ((input.bytes[i] >> 5) & 0x01) ? 'fraud_detected' : 'no_fraud',
+    });
 
     // Tamper Fraud detection
-    var tamper = {};
-    tamper.n = 'tamper';
-    tamper.u = 'string';
-    if (((bytes[i] >> 4) & 0x01) === 0x00) {
-        tamper.v = 'tamper_closed';
-    } else {
-        tamper.v = 'tamper_open';
-    }
-    data.sensor.push(tamper);
+    data.sensors.push({
+        n: 'tamper',
+        v: ((input.bytes[i] >> 4) & 0x01) ? 'tamper_open' : 'tamper_closed',
+    });
 
     // Resolution
-    var resol = {};
-    resol.u = 'l';
-    resol.n = 'L/pulse';
-    if (((bytes[i] >> 1) & 0x03) === 0x00) {
-        resol.n = 'count_resolution_not_configured';
-        resol.v = '';
-    } else if (((bytes[i] >> 1) & 0x03) === 0x01) {
-        resol.v = 1.0;
-    } else if (((bytes[i] >> 1) & 0x03) === 0x02) {
-        resol.v = 10.0;
-    } else if (((bytes[i] >> 1) & 0x03) === 0x03) {
-        resol.v = 100.0;
-    } else if (((bytes[i] >> 1) & 0x03) === 0x04) {
-        resol.v = 1000.0;
-    } else if (((bytes[i] >> 1) & 0x03) === 0x05) {
-        resol.v = 10000.0;
+    let resolution = 'not_configured';
+
+    let expo = (input.bytes[i++] >> 1 & 0x03);
+    if (expo !== 0) {
+        resolution = (10 ^ (expo - 1)).round(0);
     }
-    data.sensor.push(resol);
-    i++;
+
+    data.sensors.push({
+        n: 'resolution',
+        u: 'L/pulse',
+        v: resolution
+    });
 
     // BATTERY
-    var voltage = {};
-    voltage.n = 'battery';
-    voltage.v = (bytes[i++] / 10.0);
-    voltage.u = 'V';
-    data.sensor.push(voltage);
+    data.sensors.push({
+        n: 'battery_voltage',
+        v: (input.bytes[i++] / 10.0).round(1),
+        u: 'V'
+    });
 
     // FIRMWARE
-    var conv = parseInt(((bytes[i++] << 8) | bytes[i++]));
-    var firmware = {};
-    firmware.n = 'firmware';
-    firmware.u = 'string';
-    firmware.v = (conv / 1000).toFixed(0) + '.' + ((conv % 1000) / 100).toFixed(0) + '.' + ((conv % 100) / 10).toFixed(0) + '.' + ((conv % 10)).toFixed(0);
-    data.device.push(firmware);
+    let firmware = parseInt(((input.bytes[i++] << 8) | input.bytes[i++]));
+    data.device.push({
+        n: 'firmware_version',
+        v: (firmware / 1000).toFixed(0) + '.'
+            + ((firmware % 1000) / 100).toFixed(0) + '.'
+            + ((firmware % 100) / 10).toFixed(0) + '.'
+            + ((firmware % 10)).toFixed(0),
+    });
 
-    // FLUX A
-    var pulse_count_flux_a = {};
-    pulse_count_flux_a.n = 'pulse_count_flux_a';
-    pulse_count_flux_a.v = (bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | (bytes[i++]);
-    pulse_count_flux_a.u = 'count';
-    data.sensor.push(pulse_count_flux_a);
+    data.sensors.push({
+        n: 'pulse_count_flux_a',
+        v: read_uint32(input.bytes.slice(i, i += 4)),
+    });
 
-    if (device.mode === 'multi_mode') {
+    if (op_mode_str[mode] === 'multi_mode') {
         // FLUX B
-        var pulse_count_flux_b = {};
-        pulse_count_flux_b.n = 'pulse_count_flux_b';
-        pulse_count_flux_b.v = (bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | (bytes[i++]);
-        pulse_count_flux_b.u = 'count';
-        data.sensor.push(pulse_count_flux_b);
+        data.sensors.push({
+            n: 'pulse_count_flux_b',
+            v: read_uint32(input.bytes.slice(i, i += 4)),
+        });
 
         // FLUX C
-        var pulse_count_flux_c = {};
-        pulse_count_flux_c.n = 'pulse_count_flux_c';
-        pulse_count_flux_c.v = (bytes[i++] << 24) | (bytes[i++] << 16) | (bytes[i++] << 8) | (bytes[i]);
-        pulse_count_flux_c.u = 'count';
-        data.sensor.push(pulse_count_flux_c);
+        data.sensors.push({
+            n: 'pulse_count_flux_c',
+            v: read_uint32(input.bytes.slice(i, i += 4)),
+        });
 
     } else {
-        var pulse_count_reflux = {};
-        pulse_count_reflux.n = 'pulse_count_reflux';
-        pulse_count_reflux.v = (bytes[i++] << 8) | (bytes[i]);
-        pulse_count_reflux.u = 'count';
-        data.sensor.push(pulse_count_reflux);
+        data.sensors.push({
+            n: 'pulse_count_reflux',
+            v: read_uint16(input.bytes.slice(i, i += 2)),
+        });
     }
 
     return { data };
+}
+
+Number.prototype.round = function (n) {
+    const d = Math.pow(10, n);
+    return Math.round((this + Number.EPSILON) * d) / d;
+};
+
+function read_uint16(bytes) {
+    let value = (bytes[0] << 8) + bytes[1];
+    return value & 0xffff;
+}
+
+function read_uint32(bytes) {
+    let value = (bytes[0] << 24) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
+    return value & 0xffffffff;
 }

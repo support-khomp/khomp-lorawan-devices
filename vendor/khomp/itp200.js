@@ -29,6 +29,12 @@ function decodeUplink(input) {
     let decode_ver = input.bytes[i++];
     let mask = input.bytes[i++];
 
+    if (input.fPort < 14 || input.fPort > 15) {
+        return {
+            errors: ['invalid fPort'],
+        };
+    }
+
     if (decode_ver == 1) {
         data.device = [];
         data.device.push({
@@ -121,11 +127,10 @@ function decodeUplink(input) {
             }
 
             // Coordinates fixed
-            let coordinates_fixed = { n: 'coordinates_fixed', v: 'not_fixed' };
-            if (mask_status >> mask_status_index++ & 0x01) {
-                coordinates_fixed.v = 'fixed';
-            }
-            data.status.push(coordinates_fixed);
+            data.status.push({
+                n: 'coordinates_fixed',
+                v: (mask_status >> mask_status_index++ & 0x01) ? 'fixed' : 'not_fixed'
+            });
 
             // timestamp_sync
             let timestamp_sync = { n: 'timestamp_sync', v: 'not_syncronized' };
@@ -252,7 +257,7 @@ function decodeUplink(input) {
                 if (mask_alert >> index & 0x01) {
                     data.alerts.push({
                         n: alert_names[index],
-                        v: 'alert'                            
+                        v: 'alert'
                     });
                 }
             }
