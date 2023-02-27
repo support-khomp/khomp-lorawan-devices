@@ -29,7 +29,7 @@ firmwareVersions:
         id: nit10la-profile
         lorawanCertified: true
         codec: nit10la-codec
-        
+
 # Commercial information
 resellerURLs:
   - name: 'Khomp Inc.'

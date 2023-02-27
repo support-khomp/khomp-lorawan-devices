@@ -21,7 +21,7 @@ firmwareVersions:
 
   - # Firmware version
     version: '3.0.3.0 (OTAA)'
-    numeric: 1
+    numeric: 2
     hardwareVersions:
       - '3'
     profiles:
@@ -32,12 +32,12 @@ firmwareVersions:
 
   - # Firmware version
     version: '3.0.4.0'
-    numeric: 2
+    numeric: 3
     hardwareVersions:
       - '3'
     profiles:
       AU915-928:
-        id: nit2xli-profile-otaa
+        id: nit2xli-profile-3040
         lorawanCertified: true
         codec: nit2xli-codec
 
