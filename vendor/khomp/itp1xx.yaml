@@ -1,0 +1,47 @@
+name: ITP 1xx
+description: ITP 1xx - Endpoint LoRa Fotocélula
+
+# Hardware versions (optional, use when you have revisions)
+hardwareVersions:
+  - version: '2'
+    numeric: 1
+
+# Firmware versions (at least one is mandatory)
+firmwareVersions:
+  - # You can add more firmware versions and use different profiles per version
+    version: '2.0.0.x (ABP)'
+    numeric: 1
+    hardwareVersions:
+      - '2'
+    profiles:
+      AU915-928:
+        id: itp1xx-profile-abp
+        lorawanCertified: true
+        codec: itp1xx-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '2.0.0.x (OTAA)'
+    numeric: 1
+    hardwareVersions:
+      - '2'
+    profiles:
+      AU915-928:
+        id: itp1xx-profile-otaa
+        lorawanCertified: true
+        codec: itp1xx-codec
+  
+# Commercial information
+resellerURLs:
+  - name: 'Khomp Inc.'
+    region:
+      - Brazil
+    url: https://khomp.com.br/
+msrp:
+  EUR: 90
+  USD: 120
+
+# Photos
+photos:
+  main: itp1xx.png
+  other:
+    - itp1xx-package.png
