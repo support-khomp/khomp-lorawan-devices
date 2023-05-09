@@ -70,9 +70,10 @@ function decodeUplink(input) {
 
     for (let index = 0; index < 3; index++) {
         if (mask >> (3 + index) & 0x01) {
+          	let voltage = (read_uint16(input.bytes.slice(i, i += 2)) / 10.0).round(1);
             data.sensors.push({
                 n: phases_name[index] + '_' + 'voltage',
-                v: (read_uint16(input.bytes.slice(i, i += 2)) / 10.0).round(1),
+                v: voltage,
                 u: 'V'
             });
 
@@ -90,9 +91,10 @@ function decodeUplink(input) {
                 u: 'A'
             });
 
+          	let pwr_factor = ((input.bytes[i++] / 100.0) - 1).round(2);
             data.sensors.push({
                 n: phases_name[index] + '_' + 'pwr_factor',
-                v: ((input.bytes[i++] / 100.0) - 1).round(2),
+                v: pwr_factor,
                 u: '/'
             });
 
@@ -115,6 +117,27 @@ function decodeUplink(input) {
             data.sensors.push({
                 n: phases_name[index] + '_' + 'tc_config',
                 v: tc_config_name[input.bytes[i++]],
+            });
+          
+          let apparent_power = voltage*current;
+          data.sensors.push({
+                n: phases_name[index] + '_' + 'apparent_power',
+                v: apparent_power.round(2),
+            	u: 'VA'
+            });
+          
+          let active_power = (apparent_power*pwr_factor);
+          data.sensors.push({
+                n: phases_name[index] + '_' + 'active_power',
+                v: active_power.round(2),
+            	u: 'W'
+            });
+          
+          let reactive_power = Math.sqrt(Math.pow(apparent_power, 2) - Math.pow(active_power, 2));
+          data.sensors.push({
+                n: phases_name[index] + '_' + 'reactive_power',
+                v: reactive_power.round(2),
+            	u: 'VAr'
             });
         }
     }
