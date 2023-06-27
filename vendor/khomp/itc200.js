@@ -14,7 +14,7 @@ const model_name = {
     18: 'ITC 211',
     19: 'ITC 214'
 };
-const pulse_width_name = [
+const meter_name = [
     'a',
     'b',
     'c',
@@ -44,6 +44,7 @@ function decodeUplink(input) {
     let mask_index = 0;
     let data = {};
     let decode_ver = input.bytes[i++];
+    let resolution = 0;
 
     if (decode_ver != 1) {
         return {
@@ -114,12 +115,13 @@ function decodeUplink(input) {
 
     // resolution
     if (mask >> mask_index++ & 0x01) {
+        resolution = Math.pow(10, input.bytes[i++]);
         data.sensors.push({
             n: 'resolution',
-            v: Math.pow(10, input.bytes[i++]),
+            v: resolution,
             u: 'L/pulse'
         });
-    }    
+    }
 
     // fraud_bit
     if (mask >> mask_index++ & 0x01) {
@@ -133,19 +135,21 @@ function decodeUplink(input) {
     let pulse_width_active = ((mask >> mask_index++) & 0x01);
 
     // Counters Flux & Pulse Width   
+    let counter_flux = [-1, -1, -1, -1];
     for (var index = 0; index < 4; index++) {
         // Counters Flux 
         if (mask >> mask_index++ & 0x01) {
+            counter_flux[index] = read_uint32(input.bytes.slice(i, i += 4));
             data.sensors.push({
                 n: 'counter_' + counter_name[index],
-                v: read_uint32(input.bytes.slice(i, i += 4)),
+                v: counter_flux[index],
                 u: 'counter'
             });
 
             // Pulse width
             if (pulse_width_active != 0) {
                 data.sensors.push({
-                    n: 'pulse_width_flux_' + pulse_width_name[index],
+                    n: 'pulse_width_flux_' + meter_name[index],
                     v: read_uint16(input.bytes.slice(i, i += 2)) * 10,
                     u: 'ms'
                 });
@@ -154,13 +158,29 @@ function decodeUplink(input) {
     }
 
     // Counters Reflux   
+    let counter_reflux = [0, 0, 0, 0];
     for (var index = 0; index < 2; index++) {
         if (mask >> mask_index++ & 0x01) {
-            data.sensors.push({
-                n: 'counter_' + counter_name[index+4],
-                v: read_uint32(input.bytes.slice(i, i += 4)),
-                u: 'counter'
-            });
+            counter_reflux[index] = read_uint32(input.bytes.slice(i, i += 4)),
+                data.sensors.push({
+                    n: 'counter_' + counter_name[index + 4],
+                    v: counter_reflux[index],
+                    u: 'counter'
+                });
+        }
+    }
+
+    // Total Volume
+    if (resolution != 0) {
+        for (var index = 0; index < 4; index++) {
+            if (counter_flux[index] >= 0) {
+                let total_volume = (counter_flux[index] - counter_reflux[index]) * resolution;
+                data.sensors.push({
+                    n: 'total_volume_meter_' + meter_name[index],
+                    v: (total_volume / 1000.0).round(3),
+                    u: 'm³'
+                });
+            }
         }
     }
 
