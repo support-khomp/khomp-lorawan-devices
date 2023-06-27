@@ -1,0 +1,36 @@
+name: NIT 20LI TH Logger
+description: IT 20LI TH Logger - Endpoint LoRa
+
+# Hardware versions (optional, use when you have revisions)
+hardwareVersions:
+  - version: '3'
+    numeric: 1
+
+# Firmware versions (at least one is mandatory)
+firmwareVersions:
+  - # Firmware version
+    version: '1.0.0.0'
+    numeric: 1
+    hardwareVersions:
+      - '3'
+    profiles:
+      AU915-928:
+        id: nit20li-th-logger-profile
+        lorawanCertified: true
+        codec: nit20li-th-logger-codec
+
+# Commercial information
+resellerURLs:
+  - name: 'Khomp Inc.'
+    region:
+      - Brazil
+    url: https://khomp.com.br/
+msrp:
+  EUR: 90
+  USD: 120
+
+# Photos
+photos:
+  main: nit20li-th-logger.png
+  other:
+    - nit20li-th-logger-package.png
