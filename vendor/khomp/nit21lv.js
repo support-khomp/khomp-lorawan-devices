@@ -12,6 +12,7 @@ const axis_name = ['x', 'y', 'z'];
 function decodeUplink(input) {
     let i = 0;
     let mask = 0;
+    let mask_index = 0;
     let data = {};
     let decode_ver = input.bytes[i++];
 
@@ -38,7 +39,7 @@ function decodeUplink(input) {
     mask = (input.bytes[i++] << 8) | input.bytes[i++];
 
     // Firmware
-    if (mask >> 0 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         let firmware = (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F) + '.';
         firmware += (input.bytes[i] >> 4 & 0x0F) + '.' + (input.bytes[i++] & 0x0F);
         data.device.push({
@@ -48,25 +49,25 @@ function decodeUplink(input) {
     }
 
     // Battery
-    if (mask >> 1 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         data.device.push({
             n: 'battery_voltage',
-            v: ((input.bytes[i++] / 100) + 1).round(2),
+            v: ((input.bytes[i++] / 120) + 1).round(2),
             u: 'V'
         });
     }
 
     // Temperature Int
-    if (mask >> 2 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
             n: 'internal_temperature',
-            v: (input.bytes[i++] / 2).round(1),
+            v: (input.bytes[i++] / 3).round(1),
             u: '°C'
         });
     }
 
     // Humidity Int
-    if (mask >> 3 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
             n: 'internal_relative_humidity',
             v: (input.bytes[i++] / 2).round(1),
@@ -75,7 +76,7 @@ function decodeUplink(input) {
     }
 
     // RMS
-    if (mask >> 4 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
                 u: 'm/s²',
@@ -86,17 +87,17 @@ function decodeUplink(input) {
     }
 
     // Kurtosis
-    if (mask >> 5 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
-                v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 10000.0).round(4),
                 n: 'kurtosis_' + axis_name[index]
             });
         }
     }
 
     // Peak to Peak
-    if (mask >> 6 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
                 u: 'm/s²',
@@ -107,7 +108,7 @@ function decodeUplink(input) {
     }
 
     // Crest Factor
-    if (mask >> 7 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
                 u: 'dB',
@@ -117,12 +118,27 @@ function decodeUplink(input) {
         }
     }
 
+    // Calibrated
+    data.sensors.push({
+        n: 'calibrated',
+        v: (mask >> mask_index++ & 0x01) ? 'true' : 'false',
+        u: 'bool'
+    });
+
+    // Threshold event
+    if (mask >> mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'threshold_event',
+            v: 'event'
+        });
+    }
+
     // Velocity
-    if (mask >> 8 & 0x01) {
+    if (mask >> mask_index++ & 0x01) {
         for (let index = 0; index < 3; index++) {
             data.sensors.push({
-                u: 'mm/s',
-                v: (read_uint16(input.bytes.slice(i, i += 2)) / 100.0).round(2),
+                u: 'm/s',
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 100000.0).round(5),
                 n: 'velocity_' + axis_name[index]
             });
         }
