@@ -13,11 +13,11 @@ const op_mode_str = [
     "dry",
     "counter",
     "dry with counter",
-	"counter time",
-  	"dry with counter time",
+    "counter time",
+    "dry with counter time",
     "counter and counter time",
-  	"dry with counter and counter time",
-	];
+    "dry with counter and counter time",
+];
 
 function decodeUplink(input) {
     let i = 0;
@@ -77,7 +77,7 @@ function decodeUplink(input) {
             u: 'V'
         });
     }
-  
+
     // Debounce
     if (data_mask >> data_mask_index++ & 0x01) {
         data.sensors.push({
@@ -116,6 +116,15 @@ function decodeUplink(input) {
         }
     }
 
+    // PWM Duty
+    if (data_mask >> data_mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'pwm_duty',
+            v: input.bytes[i++],
+            u: '%'
+        });
+    }
+
     // Get counters
     for (let index = 0; index < 5; index++) {
         // If the type of input is a counter
@@ -126,19 +135,19 @@ function decodeUplink(input) {
             });
         }
     }
-  
-  // Get counters time
+
+    // Get counters time
     for (let index = 0; index < 5; index++) {
         // If the type of input is a counter time
         if ((inputs_config >> (index * 3) & 0x04) != 0) {
             data.sensors.push({
                 n: 'counter_time_in' + (index + 1),
                 v: read_uint32(input.bytes.slice(i, i += 4)),
-              	u: 'seconds'
+                u: 'seconds'
             });
         }
     }
-  
+
     return { data };
 }
 

@@ -48,9 +48,10 @@ function decodeUplink(input) {
 
         // Environment Sensor
         if (mask_sensor_inte >> 0 & 0x01) {
-            data.device.push({ 
-                n: 'env_sensor_status', 
-                v: 'fail' });
+            data.device.push({
+                n: 'env_sensor_status',
+                v: 'fail'
+            });
         }
 
         // Decode Battery
@@ -116,7 +117,7 @@ function decodeUplink(input) {
             if (mask_sensor_ext >> 1 & 0x01) {
                 data.drys.push({
                     n: 'c1_count',
-                    v: v = input.bytes[index++] | (input.bytes[index++] << 8)
+                    v: input.bytes[index++] | (input.bytes[index++] << 8)
                 });
             }
 
@@ -133,7 +134,7 @@ function decodeUplink(input) {
             if (mask_sensor_ext >> 3 & 0x01) {
                 data.drys.push({
                     n: 'c2_count',
-                    v: v = input.bytes[index++] | (input.bytes[index++] << 8)
+                    v: input.bytes[index++] | (input.bytes[index++] << 8)
                 });
             }
         }
@@ -180,10 +181,10 @@ function decodeUplink(input) {
                             }
 
                             // KPA
-                            for (let index = 0; index < 3; index++) {
-                                if (mask_ems104 >> (index + 1) & 0x01) {
+                            for (let k = 0; k < 3; k++) {
+                                if (mask_ems104 >> (k + 1) & 0x01) {
                                     data.modules.push({
-                                        n: 'ems_e' + index + 2 + '_kpa',
+                                        n: 'ems_e' + k + 2 + '_kpa',
                                         v: ((input.bytes[index++] | (input.bytes[index++] << 8)) / 100.0).round(2),
                                         u: 'kPa',
                                     });
@@ -574,7 +575,7 @@ function decodeUplink(input) {
                 for (let i = 0; i < 3; i++) {
                     data.modules.push({
                         n: 'emc_' + em_cfg[i],
-                        v: (emc_mask >> (i+5) & 0x01) ? 'enable' : 'disable'
+                        v: (emc_mask >> (i + 5) & 0x01) ? 'enable' : 'disable'
                     });
                 }
 
