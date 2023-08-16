@@ -73,7 +73,7 @@ function decodeUplink(input) {
         if (mask >> mask_index++ & 0x01) {
             data.device.push({
                 n: 'battery_voltage',
-                v: ((input.bytes[i++] / 120) + 1).round(2),
+                v: (read_uint16(input.bytes.slice(i, i += 2)) / 1000).round(3),
                 u: 'V'
             });
         }
@@ -108,15 +108,18 @@ function decodeUplink(input) {
 
         // C1
         if (mask >> mask_index++ & 0x01) {
+            let c1_control = input.bytes[i++];
             data.sensors.push({
                 n: 'c1_status',
-                v: (input.bytes[i++] != 0) ? 'closed' : 'open',
+                v: (c1_control & 0x01) ? 'closed' : 'open',
             });
 
-            data.sensors.push({
-                n: 'c1_counter',
-                v: read_uint24(input.bytes.slice(i, i += 3))
-            });
+            if (c1_control & 0x02) {
+                data.sensors.push({
+                    n: 'c1_counter',
+                    v: read_uint24(input.bytes.slice(i, i += 3))
+                });
+            }
         }
 
         // Number of samples stored
