@@ -131,7 +131,7 @@ function decodeUplink(input) {
         if ((inputs_config >> (index * 3) & 0x02) != 0) {
             data.sensors.push({
                 n: 'counter_in' + (index + 1),
-                v: read_uint32(input.bytes.slice(i, i += 4)),
+                v: read_uint24(input.bytes.slice(i, i += 3)),
             });
         }
     }
@@ -142,7 +142,7 @@ function decodeUplink(input) {
         if ((inputs_config >> (index * 3) & 0x04) != 0) {
             data.sensors.push({
                 n: 'counter_time_in' + (index + 1),
-                v: read_uint32(input.bytes.slice(i, i += 4)),
+                v: read_uint24(input.bytes.slice(i, i += 3)),
                 u: 'seconds'
             });
         }
@@ -161,7 +161,7 @@ function read_uint16(bytes) {
     return value & 0xffff;
 }
 
-function read_uint32(bytes) {
-    let value = (bytes[0] << 24) + (bytes[1] << 16) + (bytes[2] << 8) + bytes[3];
-    return value & 0xffffffff;
+function read_uint24(bytes) {
+    let value = (bytes[0] << 16) + (bytes[1] << 8) + bytes[2];
+    return value & 0xffffff;
 }
