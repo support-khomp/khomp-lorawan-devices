@@ -64,9 +64,9 @@ function decodeUplink(input) {
     // Resolution
     let resolution = 'not_configured';
 
-    let expo = (input.bytes[i++] >> 1 & 0x03);
+    let expo = ((input.bytes[i++] >> 1) & 0x03);
     if (expo !== 0) {
-        resolution = (10 ^ (expo - 1)).round(0);
+        resolution = Math.pow(10, (expo - 1));
     }
 
     data.sensors.push({
