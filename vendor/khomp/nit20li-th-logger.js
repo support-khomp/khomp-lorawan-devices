@@ -81,7 +81,7 @@ function decodeUplink(input) {
         // Temperature
         if (sensor_model[input.fPort] != 'none') {
             // Temperature
-            let temperature = read_uint16(input.bytes.slice(i, i += 2));
+            let temperature = read_int16(input.bytes.slice(i, i += 2));
             if (temperature != 0xFFFF) {
                 data.sensors.push({
                     n: 'temperature',
@@ -151,7 +151,7 @@ function decodeUplink(input) {
             timestamp = read_uint32(input.bytes.slice(i, i += 4));
 
             // Temperature
-            let temperature = read_uint16(input.bytes.slice(i, i += 2));
+            let temperature = read_int16(input.bytes.slice(i, i += 2));
             if (temperature != 0xFFFF) {
                 data.sensors.push({
                     n: 'temperature',
@@ -185,6 +185,18 @@ Number.prototype.round = function (n) {
 function read_uint16(bytes) {
     let value = (bytes[0] << 8) + bytes[1];
     return value & 0xffff;
+}
+
+function read_int16(bytes) {
+    let value = (bytes[0] << 8) + bytes[1];
+    if (value != 0xFFFF) {
+        if (value & 0xf000) {
+            value ^= 0xffff;
+            value += 1;
+            value *= -1;
+        }
+    }
+    return value;
 }
 
 function read_uint24(bytes) {
