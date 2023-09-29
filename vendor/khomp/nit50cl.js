@@ -27,6 +27,10 @@ function decodeUplink(input) {
     let data = {};
     let decode_ver = input.bytes[i++];
 
+    if (input.fPort == 0) {
+        return { data };
+    }
+
     if (decode_ver != 1) {
         return {
             errors: ['invalid decoder version'],
@@ -48,7 +52,7 @@ function decodeUplink(input) {
     });
 
     // Extract the data mask
-    data_mask = input.bytes[i++];
+    data_mask = read_uint16(input.bytes.slice(i, i += 2));
 
     // Extract the inputs config
     inputs_config = read_uint16(input.bytes.slice(i, i += 2));
@@ -124,6 +128,22 @@ function decodeUplink(input) {
             u: '%'
         });
     }
+
+    // Uplink interval
+    if (data_mask >> data_mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'uplink_interval',
+            v: read_uint16(input.bytes.slice(i, i += 2)),
+            u: 'minutes'
+        });
+    }
+
+    // Send at event
+    data.sensors.push({
+        n: 'send_at_event',
+        v: (data_mask >> data_mask_index++ & 0x01) ? 'true' : 'false'
+    });
+
 
     // Get counters
     for (let index = 0; index < 5; index++) {
