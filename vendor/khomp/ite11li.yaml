@@ -10,7 +10,7 @@ hardwareVersions:
 firmwareVersions:
   - # You can add more firmware versions and use different profiles per version
     version: '1.0.2.2 (ABP)'
-    numeric: 1
+    numeric: 5
     hardwareVersions:
       - '1'
     profiles:
@@ -21,7 +21,7 @@ firmwareVersions:
 
   - # You can add more firmware versions and use different profiles per version
     version: '1.0.2.2 (OTAA)'
-    numeric: 1
+    numeric: 6
     hardwareVersions:
       - '1'
     profiles:
@@ -32,7 +32,7 @@ firmwareVersions:
 
   - # You can add more firmware versions and use different profiles per version
     version: '1.0.3.0 (ABP)'
-    numeric: 2
+    numeric: 3
     hardwareVersions:
       - '1'
     profiles:
@@ -43,6 +43,28 @@ firmwareVersions:
 
   - # You can add more firmware versions and use different profiles per version
     version: '1.0.3.0 (OTAA)'
+    numeric: 4
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: ite11li-profile-otaa
+        lorawanCertified: true
+        codec: ite11li-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.1.0.0 (ABP)'
+    numeric: 1
+    hardwareVersions:
+      - '1'
+    profiles:
+      AU915-928:
+        id: ite11li-profile-abp
+        lorawanCertified: true
+        codec: ite11li-codec
+
+  - # You can add more firmware versions and use different profiles per version
+    version: '1.1.0.0 (OTAA)'
     numeric: 2
     hardwareVersions:
       - '1'
@@ -51,6 +73,7 @@ firmwareVersions:
         id: ite11li-profile-otaa
         lorawanCertified: true
         codec: ite11li-codec
+
 # Commercial information
 resellerURLs:
   - name: 'Khomp Inc.'
