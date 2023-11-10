@@ -452,7 +452,7 @@ function decodeUplink(input) {
                             if (mask_em_acw_thw >> 4 & 0x01) {
                                 data.modules.push({
                                     n: prefix_name + '_' + 'temperature_rtdt' + '_' + rom,
-                                    v: ((read_uint32(input.bytes.slice(index, index += 4)) / 100.0) - 273.15).round(2),
+                                    v: (((input.bytes[index++] | (input.bytes[index++] << 8) | (input.bytes[index++] << 16) | (input.bytes[index++] << 24)) / 100.0) - 273.15).round(2),
                                     u: 'C'
                                 });
                             }
