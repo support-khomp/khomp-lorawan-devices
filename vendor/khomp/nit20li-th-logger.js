@@ -111,7 +111,8 @@ function decodeUplink(input) {
             let c1_control = input.bytes[i++];
             data.sensors.push({
                 n: 'c1_status',
-                v: (c1_control & 0x01) ? 'closed' : 'open',
+                v: ~c1_control & 0x01
+                // v == 0 -> closed, v == 1 -> open
             });
 
             if (c1_control & 0x02) {
