@@ -51,7 +51,7 @@ function decodeUplink(input) {
     // Battery
     if (mask >> mask_index++ & 0x01) {
         data.device.push({
-            n: 'battery_voltage',
+            n: 'battery',
             v: ((input.bytes[i++] / 120) + 1).round(2),
             u: 'V'
         });
