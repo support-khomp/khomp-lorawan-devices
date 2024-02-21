@@ -80,7 +80,6 @@ function decodeUplink(input) {
 
         // Temperature
         if (sensor_model[input.fPort] != 'none') {
-            // Temperature
             let temperature = read_int16(input.bytes.slice(i, i += 2));
             if (temperature != 0xFFFF) {
                 data.sensors.push({
@@ -94,7 +93,6 @@ function decodeUplink(input) {
 
         // humidity   
         if (sensor_model[input.fPort] == 'THW100' || sensor_model[input.fPort] == 'THW100 V2') {
-            // humidity
             let humidity = read_uint16(input.bytes.slice(i, i += 2));
             if (humidity != 0xFFFF) {
                 data.sensors.push({
