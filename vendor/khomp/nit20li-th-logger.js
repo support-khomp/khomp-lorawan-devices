@@ -20,7 +20,7 @@ function decodeUplink(input) {
         2: 'none',
         3: 'DS18B20',
         4: 'THW100',
-        5: 'THW101'
+        5: 'THW100 V2'
     };
 
     if (input.fPort < 1 || input.fPort > 5) {
@@ -93,7 +93,7 @@ function decodeUplink(input) {
         }
 
         // humidity   
-        if (sensor_model[input.fPort] == 'THW100' || sensor_model[input.fPort] == 'THW101') {
+        if (sensor_model[input.fPort] == 'THW100' || sensor_model[input.fPort] == 'THW100 V2') {
             // humidity
             let humidity = read_uint16(input.bytes.slice(i, i += 2));
             if (humidity != 0xFFFF) {
