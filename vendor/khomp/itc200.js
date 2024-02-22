@@ -44,7 +44,11 @@ function decodeUplink(input) {
     let mask_index = 0;
     let data = {};
     let decode_ver = input.bytes[i++];
-    let resolution = 0;
+    let meter_resolution = 0;
+
+    if (input.fPort == 0) {
+        return { data };
+    }
 
     if (decode_ver != 1) {
         return {
@@ -66,7 +70,7 @@ function decodeUplink(input) {
         v: model_name[input.fPort]
     });
 
-    mask = read_uint16(input.bytes.slice(i, i += 2));
+    mask = read_uint24(input.bytes.slice(i, i += 3));
 
     // Firmware
     if (mask >> mask_index++ & 0x01) {
@@ -78,7 +82,16 @@ function decodeUplink(input) {
         });
     }
 
-    // battery
+    // Uplink interval
+    if (mask >> mask_index++ & 0x01) {
+        data.device.push({
+            n: 'uplink_interval',
+            v: read_uint16(input.bytes.slice(i, i += 2)),
+            u: 'minutes'
+        });
+    }
+
+    // Battery
     if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
             n: 'battery_voltage',
@@ -105,7 +118,7 @@ function decodeUplink(input) {
         });
     }
 
-    // operation_mode
+    // Operation mode
     if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
             n: 'operation_mode',
@@ -113,17 +126,17 @@ function decodeUplink(input) {
         });
     }
 
-    // resolution
+    // Meter resolution
     if (mask >> mask_index++ & 0x01) {
-        resolution = Math.pow(10, input.bytes[i++]);
+        meter_resolution = Math.pow(10, input.bytes[i++]);
         data.sensors.push({
-            n: 'resolution',
-            v: resolution,
+            n: 'meter_resolution',
+            v: meter_resolution,
             u: 'L/pulse'
         });
     }
 
-    // fraud_bit
+    // Fraud
     if (mask >> mask_index++ & 0x01) {
         data.sensors.push({
             n: 'fraud',
@@ -131,7 +144,6 @@ function decodeUplink(input) {
         });
     }
 
-    // Jump
     let pulse_width_active = ((mask >> mask_index++) & 0x01);
 
     // Counters Flux & Pulse Width   
@@ -139,12 +151,11 @@ function decodeUplink(input) {
     for (var index = 0; index < 4; index++) {
         // Counters Flux 
         if (mask >> mask_index++ & 0x01) {
-            counter_flux[index] = read_uint32(input.bytes.slice(i, i += 4));
-            data.sensors.push({
-                n: 'counter_' + counter_name[index],
-                v: counter_flux[index],
-                u: 'counter'
-            });
+            counter_flux[index] = read_uint32(input.bytes.slice(i, i += 4)),
+                data.sensors.push({
+                    n: 'counter_' + counter_name[index],
+                    v: counter_flux[index]
+                });
 
             // Pulse width
             if (pulse_width_active != 0) {
@@ -164,17 +175,16 @@ function decodeUplink(input) {
             counter_reflux[index] = read_uint32(input.bytes.slice(i, i += 4)),
                 data.sensors.push({
                     n: 'counter_' + counter_name[index + 4],
-                    v: counter_reflux[index],
-                    u: 'counter'
+                    v: counter_reflux[index]
                 });
         }
     }
 
     // Total Volume
-    if (resolution != 0) {
+    if (meter_resolution != 0) {
         for (var index = 0; index < 4; index++) {
             if (counter_flux[index] >= 0) {
-                let total_volume = (counter_flux[index] - counter_reflux[index]) * resolution;
+                let total_volume = (counter_flux[index] - counter_reflux[index]) * meter_resolution;
                 data.sensors.push({
                     n: 'total_volume_meter_' + meter_name[index],
                     v: (total_volume / 1000.0).round(3),
@@ -183,12 +193,6 @@ function decodeUplink(input) {
             }
         }
     }
-
-    // Timestamp sync
-    data.sensors.push({
-        n: 'timestamp_sync',
-        v: (mask >> mask_index++ & 0x01) ? 'syncronized' : 'not syncronized'
-    });
 
     // Counter insert alarm    
     if (mask >> mask_index++ & 0x01) {
@@ -209,6 +213,11 @@ Number.prototype.round = function (n) {
 function read_uint16(bytes) {
     let value = (bytes[0] << 8) + bytes[1];
     return value & 0xffff;
+}
+
+function read_uint24(bytes) {
+    let value = (bytes[0] << 16) + (bytes[1] << 8) + bytes[2];
+    return value & 0xffffff;
 }
 
 function read_uint32(bytes) {
