@@ -82,20 +82,30 @@ function decodeUplink(input) {
         });
     }
 
-    // Debounce
-    if (data_mask >> data_mask_index++ & 0x01) {
-        data.sensors.push({
-            n: 'debounce_time',
-            v: (input.bytes[i++] * 10),
-            u: 'ms'
-        });
-    }
-
     // FIFO buffer
     data.sensors.push({
         n: 'buffered_events',
         v: ((data_mask >> data_mask_index++) & 0x01) ? input.bytes[i++] : 0
     });
+
+    // Uplink interval
+    if (data_mask >> data_mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'uplink_interval',
+            v: read_uint16(input.bytes.slice(i, i += 2)),
+            u: 'minutes'
+        });
+    }
+
+    // Debounce
+    if (data_mask >> data_mask_index++ & 0x01) {
+        data.sensors.push({
+            n: 'debounce_time',
+            v: read_uint16(input.bytes.slice(i, i += 2)) * 10,
+            u: 'ms'
+        });
+    }
+
 
     // Inputs config
     for (let index = 0; index < 5; index++) {
@@ -129,14 +139,11 @@ function decodeUplink(input) {
         });
     }
 
-    // Uplink interval
-    if (data_mask >> data_mask_index++ & 0x01) {
-        data.sensors.push({
-            n: 'uplink_interval',
-            v: read_uint16(input.bytes.slice(i, i += 2)),
-            u: 'minutes'
-        });
-    }
+    // Enable FIFO event
+    data.sensors.push({
+        n: 'enable_fifo_event',
+        v: (data_mask >> data_mask_index++ & 0x01) ? 'true' : 'false'
+    });
 
     // Send at event
     data.sensors.push({
@@ -144,6 +151,19 @@ function decodeUplink(input) {
         v: (data_mask >> data_mask_index++ & 0x01) ? 'true' : 'false'
     });
 
+    // Input Alarm
+    let input_alarm = (data_mask >> data_mask_index++ & 0x01);
+    data.sensors.push({
+        n: 'input_alarm',
+        v: input_alarm ? 'enabled' : 'disabled'
+    });
+
+    // Input alarm timeout
+    data.sensors.push({
+        n: 'input_alarm_timeout',
+        v: input_alarm ? read_uint16(input.bytes.slice(i, i += 2)) : 'N/A',
+        u: 'seconds'
+    });
 
     // Get counters
     for (let index = 0; index < 5; index++) {
